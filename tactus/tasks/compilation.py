@@ -29,7 +29,7 @@ class IALClone(Task):
         Task.__init__(self, config, __class__.__name__)
 
         self.git_ial_repo = self.config["compile.ial_git_repo"]
-        self.git_ial_branch = self.config["compile.ial_git_version"]
+        self.git_ial_version = self.config["compile.ial_git_version"]
         git_token = self.config["compile.git_token"]
         self.git_token = git_token
         ial_dir = self.config["compile.ial_dir"]
@@ -37,10 +37,11 @@ class IALClone(Task):
 
     def execute(self):
         """Execute task."""
+        batch_job = BatchJob(os.environ)
         if os.path.exists(self.ial_dir):
             logger.info("IAL dir {} already exists", self.ial_dir)
         else:
-            batch_job = BatchJob(os.environ)
+            
             cmd = f"git clone {self.git_ial_repo} {self.ial_dir}"
             cmd = cmd.replace("[TOKEN]", self.git_token)
             batch_job.run(cmd)
@@ -156,7 +157,7 @@ class TactusBundleCreate(Task):
 
         batch_job.run(
             f"cd {self.compile_dir}; {self.ecbundle_bin} create "
-            + f"{self.git_token_str} {self.bundle_file_str} --update"
+            + f"{self.git_token_str} {self.bundle_file_str} --update "
             + f"--arch-dir {self.arch_dir}"
         )
 
@@ -282,13 +283,13 @@ class TactusBundleBuild(Task):
             logger.info("Building bundle sources at {}", self.exp_builddir)
             batch_job = BatchJob(os.environ)
             nthreads = os.environ.get("OMP_NUM_THREADS")
-            #batch_job.run(
-            #    f"cd {self.bundle_dir};  {self.ecbundle_bin} build "
-            #    + f"--arch {self.arch} {self.ninja_arg} --forecast-only "
-            #    + f" {self.rebuild_args} {self.prec_arg} -j{nthreads} "
-            #    + f"--install-dir={self.install_dir} --install "
-            #    + f"--build-dir={self.exp_builddir}"
-            #)
+            batch_job.run(
+                f"cd {self.bundle_dir};  {self.ecbundle_bin} build "
+                + f"--arch {self.arch} {self.ninja_arg} --forecast-only "
+                + f" {self.rebuild_args} {self.prec_arg} -j{nthreads} "
+                + f"--install-dir={self.install_dir} --install "
+                + f"--build-dir={self.exp_builddir}"
+            )
             tactusmakedirs(self.install_dir)
         
         if self.config["compile.install"]:
