@@ -741,15 +741,10 @@
           "description": "whether to clean build folder before compilation",
           "default": false
         },
-        "cache": {
+        "install": {
           "type": "boolean",
-          "description": "whether to use chache build/install folders",
+          "description": "whether to install in @INSTALL_DIR@",
           "default": false
-        },
-        "cache_dir": {
-          "type": "string",
-          "description": "whether to use chache build/install folders",
-          "default": "@REFERENCE_DATA@/bundle_cache"
         }
       }
     },
