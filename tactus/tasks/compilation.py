@@ -60,7 +60,9 @@ class TactusBundleCreate(Task):
         compile_dir = self.config["compile.dir"]
         self.compile_dir = self.platform.substitute(compile_dir)
         tactusmakedirs(self.compile_dir)
-
+        
+        self.arch_dir = self.platform.substitute(self.config["compile.arch_dir"])
+        
         git_token = self.config["compile.git_token"]
         git_token_str = ""
         if git_token:
@@ -155,6 +157,7 @@ class TactusBundleCreate(Task):
         batch_job.run(
             f"cd {self.compile_dir}; {self.ecbundle_bin} create "
             + f"{self.git_token_str} {self.bundle_file_str} --update"
+            + f"--arch-dir {self.arch_dir}"
         )
 
 
