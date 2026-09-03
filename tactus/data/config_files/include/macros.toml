@@ -48,6 +48,7 @@
     {gl_version = "submission.gl_version"},
     {ial_version = "submission.ial_version"},
     {ial_tag = "compile.ial_git_branch"},
+    {arch = "compile.arch"},
   ]
   group_macros = ["platform", "system"]
   os_macros = ["USER", "HOME", "PWD", "CONFIG"]

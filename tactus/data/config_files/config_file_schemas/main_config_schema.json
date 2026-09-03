@@ -701,10 +701,15 @@
           "description": "Branch/tag",
           "default": "develop"
         },
+        "arch_dir": {
+          "type": "string",
+          "description": "Directory where arch files can be foud",
+          "default": "arch"
+        },
         "arch": {
           "type": "string",
           "description": "Compiler configuration",
-          "default": "source/ial-source/bundle/arch/ecmwf/hpc2020"
+          "default": "ecmwf/hpc2020/@COMPILER@"
         },
         "dir": {
           "type": "string",
