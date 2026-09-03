@@ -29,7 +29,7 @@ class IALClone(Task):
         Task.__init__(self, config, __class__.__name__)
 
         self.git_ial_repo = self.config["compile.ial_git_repo"]
-        self.git_ial_branch = self.config["compile.ial_git_branch"]
+        self.git_ial_branch = self.config["compile.ial_git_version"]
         git_token = self.config["compile.git_token"]
         self.git_token = git_token
         ial_dir = self.config["compile.ial_dir"]
@@ -41,10 +41,10 @@ class IALClone(Task):
             logger.info("IAL dir {} alreadys exists", self.ial_dir)
         else:
             batch_job = BatchJob(os.environ)
-            cmd = f"git clone -b {self.git_ial_branch} {self.git_ial_repo} {self.ial_dir}"
+            cmd = f"git clone {self.git_ial_repo} {self.ial_dir}"
             cmd = cmd.replace("[TOKEN]", self.git_token)
             batch_job.run(cmd)
-
+        batch_job.run(f"cd {self.ial_dir}; git checkout {self.git_ial_version}")
 
 class TactusBundleCreate(Task):
     """tactus create bundle."""
