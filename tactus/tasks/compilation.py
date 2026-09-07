@@ -179,7 +179,7 @@ class TactusBundleBuild(Task):
         self.compiler = self.platform.substitute("@COMPILER@")
         self.precision = self.config.get("task.args.prec", "prec")
         self.case_dir = self.platform.substitute("@CASEDIR@")
-        self.arch = self.config["compile.arch"]
+        self.arch = self.platform.substitute(self.config["compile.arch"])
 
         local_install_dir = f"{self.case_dir}/install/{self.precision}" 
         self.local_install_dir =  self.platform.substitute(local_install_dir)
@@ -251,7 +251,7 @@ class TactusBundleBuild(Task):
 
         """
         arch_dir = Path(f"{self.bundle_dir}/source/arch/{self.arch}")
-        default_link = arch_dir / "default"
+        default_link = arch_dir 
         if default_link.exists() and default_link.is_symlink():
             arch = default_link.resolve()
         else:
