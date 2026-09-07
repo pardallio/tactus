@@ -299,7 +299,8 @@ class TactusBundleBuild(Task):
             #    + f"--install-dir={self.install_dir} --install "
             #    + f"--build-dir={self.exp_builddir}"
             #)
-        
+            logger.info("Installed bundle at  {}", {self.install_dir})
+
         if self.config["ial.compile.install"]:
             self.make_install_arch_symlink()
             if os.path.exists(self.install_dir_latest) and os.path.islink(self.install_dir_latest):
@@ -308,6 +309,8 @@ class TactusBundleBuild(Task):
             
             latest_install = f"@INSTALL_DIR@/{self.git_ial_branch}"
             latest_install = self.platform.substitute(latest_install)
-
             os.symlink(latest_install, self.install_dir_latest)
+            logger.info("Symlinked installtion from {} to {}", self.install_dir,self.install_dir_latest)
+
             os.symlink(self.install_dir, self.local_install_dir)
+            logger.info("Symlinked installtion from {} to {}", self.install_dir,self.local_install_dir)
