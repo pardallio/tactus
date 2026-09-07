@@ -17,8 +17,8 @@
     "system": {
       "$ref": "#/definitions/system"
     },
-    "compile": {
-      "$ref": "#/definitions/compile"
+    "ial": {
+      "$ref": "#/definitions/ial"
     },
     "boundaries": {
       "$ref": "#/definitions/boundaries"
@@ -677,78 +677,94 @@
         }
       }
     },
-    "compile": {
-      "title": "Compilation configuration",
+    "ial": {
+      "title": "IAL configuration",
       "type": "object",
       "properties": {
-        "ial_dir": {
-          "type": "string",
-          "description": "Local path to IAL source dir",
-          "default": "@CASEDIR@/IAL"
+        "compile": {
+          "title": "IAL compilation configuration",
+          "type": "object",
+          "properties": {
+            "ial_dir": {
+              "type": "string",
+              "description": "Local path to IAL source dir",
+              "default": "@CASEDIR@/IAL"
+            },
+            "ial_git_repo": {
+              "type": "string",
+              "description": "Git repo for IAL source",
+              "default": "git@github.com:ACCORD-NWP/IAL"
+            },
+            "git_token": {
+              "type": "string",
+              "description": "Git token for IAL source access",
+              "default": ""
+            },
+            "arch_dir": {
+              "type": "string",
+              "description": "Directory where arch files can be found"
+            },
+            "dir": {
+              "type": "string",
+              "description": "Directory where compilation will occur",
+              "default": "@CASEDIR@/bundle"
+            },
+            "bundle_update": {
+              "type": "boolean",
+              "description": "whether to update bundle_file with another bundle",
+              "default": true
+            },
+            "update_bundle_file": {
+              "type": "string",
+              "description": "bundle used for compiling binaries",
+              "default": "@TACTUS_HOME@/data/compilation/@CYCLE@/bundle.yml"
+            },
+            "bundle_file": {
+              "type": "string",
+              "description": "bundle used for compiling binaries",
+              "default": "@CASEDIR@/IAL/bundle/bundle.yml"
+            },
+            "ninja": {
+              "type": "boolean",
+              "description": "whether to use ninja for compilation",
+              "default": false
+            },
+            "skip_build": {
+              "type": "boolean",
+              "description": "whether to skip build step",
+              "default": false
+            },
+            "clean_build": {
+              "type": "boolean",
+              "description": "whether to clean build folder before compilation",
+              "default": false
+            },
+            "install": {
+              "type": "boolean",
+              "description": "whether to install in @INSTALL_DIR@",
+              "default": false
+            }
+          }
         },
-        "ial_git_repo": {
+        "compiler": {
+          "description": "Compiler used to build IAL",
           "type": "string",
-          "description": "Git repo for IAL source",
-          "default": "git@github.com:ACCORD-NWP/IAL"
-        },
-        "git_token": {
-          "type": "string",
-          "description": "Git token for IAL source access",
-          "default": ""
-        },
-        "ial_git_version": {
-          "type": "string",
-          "description": "Branch/tag",
-          "default": "develop"
-        },
-        "arch_dir": {
-          "type": "string",
-          "description": "Directory where arch files can be found"
+          "enum": [
+            "intel",
+            "gnu",
+            ""
+          ],
+          "default": "intel"
         },
         "arch": {
           "type": "string",
           "description": "Compiler configuration",
           "default": "@COMPILER@/default"
         },
-        "dir": {
+        "ial_version": {
+          "description": "Version of IAL binary to use/compile",
           "type": "string",
-          "description": "Directory where compilation will occur",
-          "default": "@CASEDIR@/bundle"
-        },
-        "bundle_update": {
-          "type": "boolean",
-          "description": "whether to update bundle_file with another bundle",
-          "default": true
-        },
-        "update_bundle_file": {
-          "type": "string",
-          "description": "bundle used for compiling binaries",
-          "default": "@TACTUS_HOME@/data/compilation/@CYCLE@/bundle.yml"
-        },
-        "bundle_file": {
-          "type": "string",
-          "description": "bundle used for compiling binaries",
-          "default": "@CASEDIR@/IAL/bundle/bundle.yml"
-        },
-        "ninja": {
-          "type": "boolean",
-          "description": "whether to use ninja for compilation",
-          "default": false
-        },
-        "skip_build": {
-          "type": "boolean",
-          "description": "whether to skip build step",
-          "default": false
-        },
-        "clean_build": {
-          "type": "boolean",
-          "description": "whether to clean build folder before compilation",
-          "default": false
-        },
-        "install": {
-          "type": "boolean",
-          "description": "whether to install in @INSTALL_DIR@",
-          "default": false
+          "default": "latest"
         }
       }
     },
