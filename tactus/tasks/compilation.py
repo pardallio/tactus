@@ -181,6 +181,9 @@ class TactusBundleBuild(Task):
         self.case_dir = self.platform.substitute("@CASEDIR@")
         self.arch = self.config["compile.arch"]
 
+        local_install_dir = f"{self.case_dir}/install/{self.precision}" 
+        self.local_install_dir =  self.platform.substitute(local_install_dir)
+
         if self.config["compile.install"]:
             self.git_ial_branch = self.config["compile.ial_git_version"]
 
@@ -196,8 +199,7 @@ class TactusBundleBuild(Task):
             self.install_dir_latest = self.platform.substitute(install_dir_latest)
 
         else:
-            install_dir = f"{self.case_dir}/install/{self.precision}" 
-            self.install_dir = self.platform.substitute(install_dir)
+            self.install_dir = self.local_install_dir
 
         builddir = f"{self.case_dir}/build/{self.precision}"
         self.exp_bindir = f"{self.install_dir}"
@@ -280,6 +282,13 @@ class TactusBundleBuild(Task):
     def execute(self):
         """Execute task."""
         if not self.skip_build:
+            if os.path.exists(self.local_install_dir):
+                if os.path.islink(self.local_install_dir):
+                    logger.debug("Removing old link.")
+                    os.unlink(self.local_install_dir)
+                else:
+                    shutil.rmtree(self.local_install_dir)
+
             logger.info("Building bundle sources at {}", self.exp_builddir)
             batch_job = BatchJob(os.environ)
             nthreads = os.environ.get("OMP_NUM_THREADS")
@@ -290,12 +299,16 @@ class TactusBundleBuild(Task):
                 + f"--install-dir={self.install_dir} --install "
                 + f"--build-dir={self.exp_builddir}"
             )
-            tactusmakedirs(self.install_dir)
         
         if self.config["compile.install"]:
             self.make_install_arch_symlink()
             if os.path.exists(self.install_dir_latest) and os.path.islink(self.install_dir_latest):
                 logger.debug("Removing old link.")
                 os.unlink(self.install_dir_latest)
+            
+            latest_install = f"@INSTALL_DIR@/{self.git_ial_branch}"
+            latest_install = self.platform.substitute(latest_install)
 
-            os.symlink(self.install_dir, self.install_dir_latest)
+            os.symlink(latest_install, self.install_dir_latest)
+                        
+            os.symlink(self.install_dir, self.local_install_dir)
