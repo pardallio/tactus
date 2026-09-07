@@ -255,7 +255,7 @@ class TactusBundleBuild(Task):
             arch = default_link.resolve()
         else:
             arch = arch_dir
-        top = arch_dir.parts[-1]
+
         parts = arch.parts
 
         if self.compiler in parts:
@@ -264,8 +264,12 @@ class TactusBundleBuild(Task):
         return None
 
     def make_install_arch_symlink(self):
+        """Creates a symlink named default in the compilers installation folder
+        to point to the full path of the compiler's default architecture if
+        the architecture provided was a symlink
+        """
         arch_dir = Path(f"{self.bundle_dir}/source/arch/{self.arch}")
-        default_link = arch_dir / "default"
+        default_link = arch_dir
 
         install_root = Path(self.install_dir_root)
         default_root_link = install_root / "default"
@@ -290,11 +294,11 @@ class TactusBundleBuild(Task):
             batch_job = BatchJob(os.environ)
             nthreads = os.environ.get("OMP_NUM_THREADS")
             batch_job.run(
-               f"cd {self.bundle_dir};  {self.ecbundle_bin} build "
-               + f"--arch {self.arch} {self.ninja_arg} --forecast-only "
-               + f" {self.rebuild_args} {self.prec_arg} -j{nthreads} "
-               + f"--install-dir={self.install_dir} --install "
-               + f"--build-dir={self.exp_builddir}"
+                f"cd {self.bundle_dir};  {self.ecbundle_bin} build "
+                + f"--arch {self.arch} {self.ninja_arg} --forecast-only "
+                + f" {self.rebuild_args} {self.prec_arg} -j{nthreads} "
+                + f"--install-dir={self.install_dir} --install "
+                + f"--build-dir={self.exp_builddir}"
             )
             logger.info("Installed bundle at  {}", {self.install_dir})
 
