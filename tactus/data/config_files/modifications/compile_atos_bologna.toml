@@ -7,7 +7,5 @@
 [submission.task_exceptions.Forecast.binaries.MASTERODB]
   bindir = "@CASEDIR@/install/@PRECISION@/bin"
 
-
 [ial.compile]
-  arch_dir = "@CASEDIR@/IAL/bundle/arch/ecmwf/hpc2020" 
-
+  arch_dir = "@CASEDIR@/IAL/bundle/arch/ecmwf/hpc2020"

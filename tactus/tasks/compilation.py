@@ -1,14 +1,11 @@
 """Compialtion tasks."""
 
 import copy
-import hashlib
-import json
 import os
 import shutil
 import sys
 from pathlib import Path
 
-from git import InvalidGitRepositoryError, Repo
 from ruamel.yaml import YAML
 
 from ..logs import logger
@@ -41,11 +38,11 @@ class IALClone(Task):
         if os.path.exists(self.ial_dir):
             logger.info("IAL dir {} already exists", self.ial_dir)
         else:
-            
             cmd = f"git clone {self.git_ial_repo} {self.ial_dir}"
             cmd = cmd.replace("[TOKEN]", self.git_token)
             batch_job.run(cmd)
         batch_job.run(f"cd {self.ial_dir}; git checkout {self.git_ial_version}")
+
 
 class TactusBundleCreate(Task):
     """tactus create bundle."""
@@ -61,9 +58,9 @@ class TactusBundleCreate(Task):
         compile_dir = self.config["ial.compile.dir"]
         self.compile_dir = self.platform.substitute(compile_dir)
         tactusmakedirs(self.compile_dir)
-        
+
         self.arch_dir = self.platform.substitute(self.config["ial.compile.arch_dir"])
-        
+
         git_token = self.config["ial.compile.git_token"]
         git_token_str = ""
         if git_token:
@@ -181,21 +178,23 @@ class TactusBundleBuild(Task):
         self.case_dir = self.platform.substitute("@CASEDIR@")
         self.arch = self.platform.substitute(self.config["ial.arch"])
 
-        local_install_dir = f"{self.case_dir}/install/{self.precision}" 
-        self.local_install_dir =  self.platform.substitute(local_install_dir)
+        local_install_dir = f"{self.case_dir}/install/{self.precision}"
+        self.local_install_dir = self.platform.substitute(local_install_dir)
 
         if self.config["ial.compile.install"]:
             self.git_ial_branch = self.config["ial.ial_version"]
 
             install_subpath = self.get_install_subpath()
-            
-            install_dir_root = f"@INSTALL_DIR@/{self.git_ial_branch}/{self.precision}/{self.compiler}"
+
+            install_dir_root = (
+                f"@INSTALL_DIR@/{self.git_ial_branch}/{self.precision}/{self.compiler}"
+            )
             self.install_dir_root = self.platform.substitute(install_dir_root)
 
-            install_dir = f"{self.install_dir_root}/{install_subpath}" 
+            install_dir = f"{self.install_dir_root}/{install_subpath}"
             self.install_dir = self.platform.substitute(install_dir)
-            
-            install_dir_latest = f"@INSTALL_DIR@/latest" 
+
+            install_dir_latest = "@INSTALL_DIR@/latest"
             self.install_dir_latest = self.platform.substitute(install_dir_latest)
 
         else:
@@ -251,33 +250,31 @@ class TactusBundleBuild(Task):
 
         """
         arch_dir = Path(f"{self.bundle_dir}/source/arch/{self.arch}")
-        default_link = arch_dir 
+        default_link = arch_dir
         if default_link.exists() and default_link.is_symlink():
             arch = default_link.resolve()
         else:
             arch = arch_dir
         top = arch_dir.parts[-1]
         parts = arch.parts
-        
+
         if self.compiler in parts:
             compiler_idx = parts.index(self.compiler)
             return Path(*parts[compiler_idx + 1 :])
-        else:
-            return None
+        return None
 
     def make_install_arch_symlink(self):
         arch_dir = Path(f"{self.bundle_dir}/source/arch/{self.arch}")
         default_link = arch_dir / "default"
-        
+
         install_root = Path(self.install_dir_root)
         default_root_link = install_root / "default"
-        
+
         if default_link.exists() and default_link.is_symlink():
             if default_root_link.exists() and default_root_link.is_symlink:
                 logger.debug("Removing old link.")
                 os.unlink(default_root_link)
-            shutil.copy(str(default_link),str(default_root_link),follow_symlinks=False)
-        
+            shutil.copy(str(default_link), str(default_root_link), follow_symlinks=False)
 
     def execute(self):
         """Execute task."""
@@ -292,25 +289,35 @@ class TactusBundleBuild(Task):
             logger.info("Building bundle sources at {}", self.exp_builddir)
             batch_job = BatchJob(os.environ)
             nthreads = os.environ.get("OMP_NUM_THREADS")
-            #batch_job.run(
-            #    f"cd {self.bundle_dir};  {self.ecbundle_bin} build "
-            #    + f"--arch {self.arch} {self.ninja_arg} --forecast-only "
-            #    + f" {self.rebuild_args} {self.prec_arg} -j{nthreads} "
-            #    + f"--install-dir={self.install_dir} --install "
-            #    + f"--build-dir={self.exp_builddir}"
-            #)
+            batch_job.run(
+               f"cd {self.bundle_dir};  {self.ecbundle_bin} build "
+               + f"--arch {self.arch} {self.ninja_arg} --forecast-only "
+               + f" {self.rebuild_args} {self.prec_arg} -j{nthreads} "
+               + f"--install-dir={self.install_dir} --install "
+               + f"--build-dir={self.exp_builddir}"
+            )
             logger.info("Installed bundle at  {}", {self.install_dir})
 
         if self.config["ial.compile.install"]:
             self.make_install_arch_symlink()
-            if os.path.exists(self.install_dir_latest) and os.path.islink(self.install_dir_latest):
+            if os.path.exists(self.install_dir_latest) and os.path.islink(
+                self.install_dir_latest
+            ):
                 logger.debug("Removing old link.")
                 os.unlink(self.install_dir_latest)
-            
+
             latest_install = f"@INSTALL_DIR@/{self.git_ial_branch}"
             latest_install = self.platform.substitute(latest_install)
             os.symlink(latest_install, self.install_dir_latest)
-            logger.info("Symlinked installtion from {} to {}", self.install_dir,self.install_dir_latest)
+            logger.info(
+                "Symlinked installtion from {} to {}",
+                self.install_dir,
+                self.install_dir_latest,
+            )
 
             os.symlink(self.install_dir, self.local_install_dir)
-            logger.info("Symlinked installtion from {} to {}", self.install_dir,self.local_install_dir)
+            logger.info(
+                "Symlinked installtion from {} to {}",
+                self.install_dir,
+                self.local_install_dir,
+            )
