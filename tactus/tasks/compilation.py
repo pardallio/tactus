@@ -264,9 +264,12 @@ class TactusBundleBuild(Task):
         return None
 
     def make_install_arch_symlink(self):
-        """Creates a symlink named default in the compilers installation folder
+        """Creates a "default" symlink in the install tree.
+
+        Creates a symlink named default in the compilers installation folder
         to point to the full path of the compiler's default architecture if
-        the architecture provided was a symlink
+        the architecture provided was a symlink.
+
         """
         arch_dir = Path(f"{self.bundle_dir}/source/arch/{self.arch}")
         default_link = arch_dir
