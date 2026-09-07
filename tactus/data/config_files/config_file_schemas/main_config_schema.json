@@ -703,13 +703,12 @@
         },
         "arch_dir": {
           "type": "string",
-          "description": "Directory where arch files can be foud",
-          "default": "arch"
+          "description": "Directory where arch files can be found"
         },
         "arch": {
           "type": "string",
           "description": "Compiler configuration",
-          "default": "ecmwf/hpc2020/@COMPILER@"
+          "default": "@COMPILER@/default"
         },
         "dir": {
           "type": "string",
