@@ -240,7 +240,6 @@ class TactusBundleBuild(Task):
         forecast_only = self.config.get("compile.forecast_only", False)
         self.forecast_only_flag = "--forecast-only " if forecast_only else ""
 
-
     def get_install_subpath(self):
         """Build install subpath by using the location of the env.sh file.
 
