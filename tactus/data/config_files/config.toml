@@ -89,7 +89,7 @@
 [ial]
   ial_version = "develop"
 
-[ial.compile]
+[compile]
   ial_git_repo = "git@github.com:ACCORD-NWP/IAL"
 
 [include]

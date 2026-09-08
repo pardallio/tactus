@@ -29,6 +29,11 @@
       ],
       "default": "intel"
     },
+    "arch": {
+      "type": "string",
+      "description": "Compiler configuration",
+      "default": "@COMPILER@/default"
+    },
     "precision": {
       "description": "Floating point precision as used in the Forecast task",
       "type": "string",

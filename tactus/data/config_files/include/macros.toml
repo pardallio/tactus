@@ -17,7 +17,7 @@
     {bdmember = "boundaries.ifs.bdmember"},
     {bdfile_template = "file_templates.bdfile.archive"},
     {case_prefix = "scheduler.ecfvars.case_prefix"},
-    {compiler = "ial.compiler"},
+    {compiler = "submission.compiler"},
     {ecf_host_resolved = "scheduler.ecfvars.ecf_host_resolved"},
     {ecf_port_resolved = "scheduler.ecfvars.ecf_port_resolved"},
     {domain = "domain.name"},
@@ -47,7 +47,8 @@
     {bindir_gl = "submission.bindir_gl"},
     {gl_version = "submission.gl_version"},
     {ial_version = "submission.ial_version"},
-    {arch = "ial.arch"},
+    {ial_git_tag = "compile.ial_git_version"},
+    {arch = "submission.arch"},
   ]
   group_macros = ["platform", "system"]
   os_macros = ["USER", "HOME", "PWD", "CONFIG"]

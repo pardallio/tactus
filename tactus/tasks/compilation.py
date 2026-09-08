@@ -25,11 +25,11 @@ class IALClone(Task):
         """
         Task.__init__(self, config, __class__.__name__)
 
-        self.git_ial_repo = self.config["ial.compile.ial_git_repo"]
-        self.git_ial_version = self.config["ial.ial_version"]
-        git_token = self.config["ial.compile.git_token"]
+        self.git_ial_repo = self.config["compile.ial_git_repo"]
+        self.git_ial_version = self.config["compile.ial_git_version"]
+        git_token = self.config["compile.git_token"]
         self.git_token = git_token
-        ial_dir = self.config["ial.compile.ial_dir"]
+        ial_dir = self.config["compile.ial_dir"]
         self.ial_dir = self.platform.substitute(ial_dir)
 
     def execute(self):
@@ -55,25 +55,25 @@ class TactusBundleCreate(Task):
         """
         Task.__init__(self, config, __class__.__name__)
 
-        compile_dir = self.config["ial.compile.dir"]
+        compile_dir = self.config["compile.dir"]
         self.compile_dir = self.platform.substitute(compile_dir)
         tactusmakedirs(self.compile_dir)
 
-        self.arch_dir = self.platform.substitute(self.config["ial.compile.arch_dir"])
+        self.arch_dir = self.platform.substitute(self.config["compile.arch_dir"])
 
-        git_token = self.config["ial.compile.git_token"]
+        git_token = self.config["compile.git_token"]
         git_token_str = ""
         if git_token:
             git_token_str = f"--github-token {git_token}"
         self.git_token_str = git_token_str
 
-        orig_bundle_file = self.config["ial.compile.bundle_file"]
+        orig_bundle_file = self.config["compile.bundle_file"]
         self.orig_bundle_file = self.platform.substitute(orig_bundle_file)
 
-        if self.config["ial.compile.bundle_update"]:
+        if self.config["compile.bundle_update"]:
             bundle_file = "@CASEDIR@/bundle-local-ial.yaml"
             self.bundle_file = self.platform.substitute(bundle_file)
-            update_bundle_file = self.config["ial.compile.update_bundle_file"]
+            update_bundle_file = self.config["compile.update_bundle_file"]
             self.update_bundle_file = self.platform.substitute(update_bundle_file)
         else:
             self.bundle_file = self.orig_bundle_file
@@ -126,10 +126,10 @@ class TactusBundleCreate(Task):
         if not self.git_token_str:
             os.environ["GITHUB"] = "git@github.com:"
 
-        ial_dir = self.config["ial.compile.ial_dir"]
+        ial_dir = self.config["compile.ial_dir"]
         os.environ["IAL_DIR"] = self.platform.substitute(ial_dir)
 
-        if self.config["ial.compile.bundle_update"]:
+        if self.config["compile.bundle_update"]:
             yaml = YAML()
 
             # Formatting preservation settings
@@ -170,19 +170,19 @@ class TactusBundleBuild(Task):
         """
         Task.__init__(self, config, __class__.__name__)
 
-        bundle_dir = self.config["ial.compile.dir"]
+        bundle_dir = self.config["compile.dir"]
         self.bundle_dir = self.platform.substitute(bundle_dir)
         self.ecbundle_bin = f"{os.path.dirname(sys.executable)}/ecbundle"
         self.compiler = self.platform.substitute("@COMPILER@")
         self.precision = self.config.get("task.args.prec", "prec")
         self.case_dir = self.platform.substitute("@CASEDIR@")
-        self.arch = self.platform.substitute(self.config["ial.arch"])
+        self.arch = self.platform.substitute(self.config["submission.arch"])
 
         local_install_dir = f"{self.case_dir}/install/{self.precision}"
         self.local_install_dir = self.platform.substitute(local_install_dir)
 
-        if self.config["ial.compile.install"]:
-            self.git_ial_branch = self.config["ial.ial_version"]
+        if self.config["compile.install"]:
+            self.git_ial_branch = self.config["compile.ial_version"]
 
             install_subpath = self.get_install_subpath()
 
@@ -203,7 +203,7 @@ class TactusBundleBuild(Task):
         builddir = f"{self.case_dir}/build/{self.precision}"
         self.exp_bindir = f"{self.install_dir}"
         self.exp_builddir = builddir
-        self.skip_build = self.config["ial.compile.skip_build"] and os.path.exists(
+        self.skip_build = self.config["compile.skip_build"] and os.path.exists(
             f"{self.exp_bindir}/bin/MASTERODB"
         )
 
@@ -221,11 +221,11 @@ class TactusBundleBuild(Task):
             logger.info("Unable to find {}", self.platform.substitute(self.case_dir))
 
         self.ninja_arg = ""
-        if self.config["ial.compile"].get("ninja"):
+        if self.config["compile"].get("ninja"):
             self.ninja_arg = "--ninja "
 
         self.rebuild_args = ""
-        if self.config["ial.compile.clean_build"]:
+        if self.config["compile.clean_build"]:
             self.rebuild_args = "--clean"
 
         self.prec_arg = ""
@@ -305,7 +305,7 @@ class TactusBundleBuild(Task):
             )
             logger.info("Installed bundle at  {}", {self.install_dir})
 
-        if self.config["ial.compile.install"]:
+        if self.config["compile.install"]:
             self.make_install_arch_symlink()
             if os.path.exists(self.install_dir_latest) and os.path.islink(
                 self.install_dir_latest
