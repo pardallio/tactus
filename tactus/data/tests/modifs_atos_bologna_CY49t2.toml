@@ -28,13 +28,12 @@
 
 [modifs.reference_checker.methods.FullPosFields]
   binary = "@BINDIR_GL@/xtool"
-  
+
 [modifs.reference_checker.methods.HistoryFields]
   binary = "@BINDIR_GL@/xtool"
 
 [modifs.reference_checker.methods.E923Files]
   binary = "@BINDIR_GL@/xtool"
-
 
 [modifs.scheduler.ecfvars]
   case_prefix = "@TAG@_@SUBTAG@"
