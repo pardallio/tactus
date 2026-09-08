@@ -46,7 +46,7 @@
     {surfex_template = "file_templates.surfex.archive"},
     {bindir_gl = "submission.bindir_gl"},
     {gl_version = "submission.gl_version"},
-    {ial_version = "ial.ial_version"},
+    {ial_version = "submission.ial_version"},
     {arch = "ial.arch"},
   ]
   group_macros = ["platform", "system"]
