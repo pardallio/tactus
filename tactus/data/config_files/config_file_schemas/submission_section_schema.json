@@ -39,11 +39,6 @@
       ],
       "default": "R32"
     },
-    "ial_version": {
-      "description": "Version of IAL binary to use",
-      "type": "string",
-      "default": "latest"
-    },
     "gl_version": {
       "description": "Version of GL binary to use",
       "type": "string",

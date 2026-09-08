@@ -6,11 +6,12 @@
 [general.output_settings]
   surfex = "PT1H"
 
+[ial]
+  ial_version = "latest"
+
 [submission]
   precision = "R64"
-  ial_version = "latest"
   bindir = "@INSTALL_DIR@/@IAL_VERSION@/R64/@ARCH@/bin"
-
   bindir_gl = "@SUBMISSION.BINDIR@"
 
 [submission.task_exceptions.E923Update]
