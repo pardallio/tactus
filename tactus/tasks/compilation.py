@@ -181,6 +181,10 @@ class TactusBundleBuild(Task):
         local_install_dir = f"{self.case_dir}/install/{self.precision}"
         self.local_install_dir = self.platform.substitute(local_install_dir)
 
+        # Get flag for compilation scope
+        forecast_only = self.config.get("compile.forecast_only", False)
+        self.forecast_only_flag = "--forecast-only " if forecast_only else ""
+
         if self.config["compile.install"]:
             self.git_ial_branch = self.config["compile.ial_git_version"]
 
@@ -298,7 +302,7 @@ class TactusBundleBuild(Task):
             nthreads = os.environ.get("OMP_NUM_THREADS")
             batch_job.run(
                 f"cd {self.bundle_dir};  {self.ecbundle_bin} build "
-                + f"--arch {self.arch} {self.ninja_arg} --forecast-only "
+                + f"--arch {self.arch} {self.ninja_arg} {self.forecast_only_flag}"
                 + f" {self.rebuild_args} {self.prec_arg} -j{nthreads} "
                 + f"--install-dir={self.install_dir} --install "
                 + f"--build-dir={self.exp_builddir}"
