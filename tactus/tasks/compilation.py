@@ -182,7 +182,7 @@ class TactusBundleBuild(Task):
         self.local_install_dir = self.platform.substitute(local_install_dir)
 
         if self.config["compile.install"]:
-            self.git_ial_branch = self.config["compile.ial_version"]
+            self.git_ial_branch = self.config["compile.ial_git_version"]
 
             install_subpath = self.get_install_subpath()
 
