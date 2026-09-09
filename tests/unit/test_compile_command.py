@@ -133,7 +133,7 @@ def test_get_install_subpath_invalid_compiler(tmp_path):
     """Check subpath is empty when no `default` symlink exists under arch dir."""
     task = _make_bundle_build_task(tmp_path, "myarch")
 
-    assert task.get_install_subpath() == None
+    assert task.get_install_subpath() is None
 
 
 def test_get_install_subpath_resolves_default_symlink(tmp_path):
