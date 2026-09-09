@@ -113,7 +113,7 @@ def test_create_compile_exp_uses_default_ial_tag_from_config(default_config, mon
     assert captured["config"]["compile.ial_git_version"] == "develop"
 
 
-def _make_bundle_build_task(bundle_dir, arch, compiler = "intel"):
+def _make_bundle_build_task(bundle_dir, arch, compiler="intel"):
     """Build a TactusBundleBuild instance without running its __init__."""
     task = TactusBundleBuild.__new__(TactusBundleBuild)
     task.bundle_dir = str(bundle_dir)
@@ -128,15 +128,17 @@ def test_get_install_subpath_without_default_symlink(tmp_path):
 
     assert task.get_install_subpath() == Path("myarch")
 
+
 def test_get_install_subpath_invalid_compiler(tmp_path):
     """Check subpath is empty when no `default` symlink exists under arch dir."""
     task = _make_bundle_build_task(tmp_path, "myarch")
 
     assert task.get_install_subpath() == None
 
+
 def test_get_install_subpath_resolves_default_symlink(tmp_path):
     """Check subpath is derived from the resolved `default` symlink target."""
-    arch_dir = tmp_path / "source" / "arch" / "myarch" 
+    arch_dir = tmp_path / "source" / "arch" / "myarch"
     build_target = arch_dir / "gnu" / "opt"
     build_target.mkdir(parents=True)
     (arch_dir / "default").symlink_to(build_target, target_is_directory=True)
