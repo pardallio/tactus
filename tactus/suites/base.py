@@ -1,6 +1,7 @@
 """Ecflow suites base class."""
 
 import os
+import re
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -153,6 +154,7 @@ class SuiteDefinition(object):
             "ECF_TIMEOUT": 20,
             "ECF_LOGHOST": self.ecf_host,
             "ARGS": "",
+            "FP_PRECISION": "",
             "LOGLEVEL": loglevel,
             "CONFIG": str(config_file),
             "TROIKA": troika,
@@ -166,6 +168,7 @@ class SuiteDefinition(object):
             "NPROCY": "",
             "KEEP_WORKDIRS": keep_workdirs,
             "MEMBER": "",
+            "TACTUS_TASK": "",
         }
 
         self.suite = EcflowSuite(
@@ -262,7 +265,7 @@ class EcflowNode:
             elif self.node_type == "suite":
                 self.ecf_node = parent.add_suite(self.name)
             elif self.node_type == "mirror":
-                if mirror_config["check_var"]:
+                if mirror_config.get("check_var", None):
                     variables = {mirror_config["check_var"]: "placeholder"}
                 self.ecf_node = parent.ecf_node.add_task(self.name)
             else:
@@ -293,7 +296,9 @@ class EcflowNode:
             if isinstance(trigger, EcflowSuiteTriggers):
                 if trigger.trigger_string is not None:
                     if self.ecf_node is not None:
-                        self.ecf_node.add_trigger(trigger.trigger_string)
+                        self.ecf_node.add_trigger(
+                            self.make_relative(trigger.trigger_string)
+                        )
                 else:
                     logger.warning("Empty trigger")
             elif isinstance(trigger, list):
@@ -322,7 +327,9 @@ class EcflowNode:
                                 trigger.trigger_string, remote_path
                             )
 
-                        self.ecf_node.add_trigger(trigger.trigger_string)
+                        self.ecf_node.add_trigger(
+                            self.make_relative(trigger.trigger_string)
+                        )
                 else:
                     raise TypeError(
                         "When parsing a list of trigger, the "
@@ -349,7 +356,7 @@ class EcflowNode:
                         trigger.trigger_string = "{0} AND {1} == complete".format(
                             trigger.trigger_string, remote_path
                         )
-                    self.ecf_node.add_trigger(trigger.trigger_string)
+                    self.ecf_node.add_trigger(self.make_relative(trigger.trigger_string))
             else:
                 raise TypeError(
                     "Triggers must be an EcflowSuiteTriggers, List[EcflowNode]"
@@ -395,6 +402,28 @@ class EcflowNode:
                     mirror_config["remote_auth"],
                 )
             )
+
+    def make_relative(self, trigger_string: str) -> str:
+        """Convert absolute ecflow node paths in a trigger string to relative paths.
+
+        Args:
+            trigger_string (str): A plain trigger expression string containing
+                absolute ecflow node paths (e.g. ``/suite/family/task == complete``).
+                Must be a ``str`` — passing a non-string (e.g. a mock object) will
+                raise a ``TypeError`` inside ``re.sub``.
+
+        Returns:
+            str: The trigger expression with all absolute paths replaced by paths
+                relative to the directory of this node's own path.
+        """
+        # Regex explanation:
+        # /  — literal slash, anchors the match to absolute paths only
+        # \S+ — one or more non-whitespace characters (the path segments)
+        return re.sub(
+            r"/\S+",
+            lambda m: os.path.relpath(m.group(), os.path.dirname(self.path)),
+            trigger_string,
+        )
 
 
 class EcflowNodeContainer(EcflowNode):
@@ -585,7 +614,7 @@ class EcflowSuiteTask(EcflowNode):
             parent (EcflowNode): Parent node.
             ecf_files (str): Path to ecflow containers
             task_settings (TaskSettings): Submission configuration
-            config (tactus.ParsedConfig): Configuration file
+            config (ParsedConfig): Configuration file
             task_settings (tactus.TaskSettings): Task settings
             input_template(str, optional): Input template
             parse (bool, optional): To parse template file or not

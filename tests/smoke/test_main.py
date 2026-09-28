@@ -71,7 +71,18 @@ def _module_mockers(module_mocker, config_path, tmp_path_factory: pytest.TempPat
     module_mocker.patch(
         "tactus.toolbox.Platform.evaluate", new=new_platform_evaluate_function
     )
-    module_mocker.patch("tactus.suites.base.ecflow")
+
+    def _make_ecflow_node(path="/mock"):
+        node = mock.MagicMock()
+        node.get_abs_node_path.return_value = path
+        node.add_family.side_effect = lambda n: _make_ecflow_node(f"{path}/{n}")
+        node.add_task.side_effect = lambda n: _make_ecflow_node(f"{path}/{n}")
+        return node
+
+    ecflow_base_mock = module_mocker.patch("tactus.suites.base.ecflow")
+    defs_mock = mock.MagicMock()
+    defs_mock.add_suite.side_effect = lambda n: _make_ecflow_node(f"/{n}")
+    ecflow_base_mock.Defs.return_value = defs_mock
     module_mocker.patch(
         "tactus.submission.TaskSettings.parse_job",
         new=new_submission_task_settings_parse_job,
@@ -149,11 +160,58 @@ def test_run_task_command(tmp_path):
 
 
 @pytest.mark.usefixtures("_module_mockers")
+def test_remove_command(tmp_path):
+    main([
+        "remove",
+        "unexisting_file",
+    ])
+
+
+@pytest.mark.usefixtures("_module_mockers")
 def test_start_suite_command():
     os.environ["TACTUS_HOST"] = "atos_bologna"
     with suppress(FileNotFoundError, HostNotFoundError, ConfigFileValidationError):
-        main(["start", "suite"])
+        main([
+            "start",
+            "suite",
+            "--config-file",
+            ConfigParserDefaults.PACKAGE_CONFIG_PATH.as_posix(),
+        ])
     del os.environ["TACTUS_HOST"]
+
+
+@pytest.mark.usefixtures("_module_mockers")
+def test_replace_node_command():
+    os.environ["TACTUS_HOST"] = "atos_bologna"
+    with suppress(FileNotFoundError, HostNotFoundError, ConfigFileValidationError):
+        main(["replace", "--ecf-node", "/"])
+    del os.environ["TACTUS_HOST"]
+
+
+@pytest.mark.usefixtures("_module_mockers")
+def test_case_command(tmp_path):
+    output_file = f"{tmp_path.as_posix()}/case_config.toml"
+    os.environ["TACTUS_HOST"] = "atos_bologna"
+    with suppress(FileNotFoundError, HostNotFoundError, ConfigFileValidationError):
+        main([
+            "case",
+            "--config-file",
+            ConfigParserDefaults.PACKAGE_CONFIG_PATH.as_posix(),
+            "--output",
+            output_file,
+            "--case-name",
+            "smoke_test_case",
+            "-e",
+        ])
+    del os.environ["TACTUS_HOST"]
+
+
+def test_case_command_missing_config_file_errors():
+    """`tactus case` should error out when --config-file is not provided."""
+    stderr = StringIO()
+    with redirect_stderr(stderr), pytest.raises(SystemExit, match="2"):
+        main(["case"])
+    assert "--config-file" in stderr.getvalue()
 
 
 @pytest.mark.usefixtures("_module_mockers")

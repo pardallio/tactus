@@ -1,5 +1,6 @@
 """Utilities for simple tasks on OS level."""
 
+import atexit
 import contextlib
 import glob
 import os
@@ -319,9 +320,8 @@ def resolve_path_relative_to_package(path: Path, ignore_errors: bool = False) ->
             a sys.path entry.
 
     Raises:
-        ValueError: If more than one candidate is found across sys.path entries.
-        FileNotFoundError: If the file is not found under any sys.path entry
-            and ignore_errors is False.
+        FileNotFoundError: If it was impossible to determine path relative to package.
+        FileNotFoundError: If file does not exist locally or in the package directory.
     """
     path = path.expanduser().resolve()
     if os.path.exists(path):
@@ -392,3 +392,104 @@ def join_files(input_files: List[str], output_filepath: str):
     if os.path.exists(output_filepath) and os.path.exists(lockfile):
         os.remove(lockfile)
         logger.info(f"Removed lockfile: {lockfile}")
+
+
+def remove_ifexists(file, etime=sys.float_info.max):
+    """Utility function to be used for lockfiles."""
+    if os.path.exists(file):
+        mtime = os.path.getmtime(file) if etime != sys.float_info.max else 0
+        if mtime < etime:
+            logger.debug(f"Removing: {file}")
+            os.remove(file)
+
+
+class FileLock:
+    """Context manager for file locking using lockfiles."""
+
+    def _try_create_lockfile(self):
+        """Atomically try to create the lockfile.
+
+        Returns:
+            bool: True if the lockfile was created by this call, False if it
+                already existed (i.e. another process/thread holds the lock).
+        """
+        try:
+            # O_CREAT | O_EXCL is atomic on POSIX and Windows: the call
+            # fails with FileExistsError if the file already exists, so
+            # no two processes can both succeed.
+            fd = os.open(
+                self.lockfile,
+                os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                0o644,
+            )
+        except FileExistsError:
+            return False
+
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(f"Lockfile for {self.filepath} created at {time.ctime()}")
+        except Exception:
+            remove_ifexists(self.lockfile)
+            raise
+
+        atexit.register(remove_ifexists, self.lockfile)
+        return True
+
+    def _delete_lockfile(self):
+        """Delete lockfile for a given file."""
+        remove_ifexists(self.lockfile)
+
+    def _acquire(self):
+        """Atomically wait for and acquire the lockfile.
+
+        Raises:
+            TimeoutError: If the lock could not be acquired within
+                ``self.timeout`` seconds.
+        """
+        start_time = time.time()
+        while not self._try_create_lockfile():
+            elapsed_time = time.time() - start_time
+            if elapsed_time > self.timeout:
+                raise TimeoutError(
+                    f"Timeout: Lockfile {self.lockfile} still exists"
+                    + f" after {self.timeout} seconds."
+                )
+            logger.info(
+                f"Lockfile {self.lockfile} exists. Waiting for it to be removed..."
+            )
+            time.sleep(self.check_interval)
+
+    def __init__(
+        self,
+        filepath: str,
+        timeout: int = 600,
+        check_interval: int = 10,
+        delete_existing: bool = False,
+    ):
+        """Initialize FileLock.
+
+        Args:
+            filepath (str): Path to the file that is being created/modified.
+                            The lockfile will be named as {filepath}.lock.
+            timeout (int, optional): Maximum time to wait for the lockfile to be removed,
+                in seconds. Defaults to 600 (10 minutes).
+            check_interval (int, optional): Time interval between checks for the lockfile,
+                in seconds. Defaults to 10.
+            delete_existing (bool, optional): Whether to  delete an existing lockfile.
+        """
+        self.filepath = filepath
+        self.lockfile = f"{filepath}.lock"
+        self.timeout = timeout
+        self.check_interval = check_interval
+        self.delete_existing = delete_existing
+
+    def __enter__(self):
+        """Enter the runtime context related to this object."""
+        if self.delete_existing:
+            remove_ifexists(self.lockfile)
+
+        self._acquire()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Exit the runtime context related to this object."""
+        self._delete_lockfile()

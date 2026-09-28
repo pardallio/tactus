@@ -119,6 +119,38 @@ def write_namelist(nml, output_file):
     logger.debug("Wrote: {}", output_file)
 
 
+def get_namelist_type_options():
+    """Find available namelist type options.
+
+    Returns:
+        tuple[list[str], Path | None]: Sorted list of available namelist
+            type names, and the directory they were found in (None if no
+            directory was found).
+
+    """
+    master_file = ConfigPaths.path_from_subpath("assemble_master.yml", last=True)
+    if not master_file:
+        return [], None
+    search_dir = master_file.parent
+    options = sorted(
+        p.name.replace("assemble_", "").replace(".yml", "")
+        for p in search_dir.glob("assemble_*.yml")
+    )
+    return options, search_dir
+
+
+def _resolve_namelist_path(subpath) -> Path:
+    """Resolve a config path, falling back to package-relative lookup."""
+    path = Path(subpath)
+    try:
+        return ConfigPaths.path_from_subpath(path)
+    except RuntimeError:
+        logger.error("File not found: {}", path.name)
+        options, search_path = get_namelist_type_options()
+        logger.error("Available assemble files in {}: {}", search_path, options)
+        raise FileNotFoundError from None
+
+
 class InvalidNamelistKindError(ValueError):
     """Custom exception."""
 
@@ -134,7 +166,7 @@ class NamelistComparator:
         """Construct the comparator.
 
         Args:
-            config (tactus.ParsedConfig): Configuration
+            config (ParsedConfig): Configuration
 
         Raises:
             SystemExit
@@ -305,25 +337,23 @@ class NamelistGenerator:
         """Construct the generator.
 
         Args:
-            config (tactus.ParsedConfig): Configuration
-            kind (str): one of 'master' or 'surfex'
+            config (ParsedConfig): Configuration
+            kind (str): namelist kind, e.g. 'master', 'surfex', or any DA task
+                such as 'bator'.  The corresponding files
+                ``<cycle>/assemble_<kind>.yml`` and
+                ``<cycle>/<kind>_namelists.yml`` must exist under the
+                namelist generation input path.
             substitute (boolean): flag for substitution
 
-        Raises:
-            InvalidNamelistKindError   # noqa: DAR401
-
         """
-        if kind not in ("master", "surfex"):
-            raise InvalidNamelistKindError(kind)
-
         self.config = config
         self.platform = Platform(config)
         self.kind = kind
         self.substitute = substitute
         self.nlcomp = NamelistComparator(config)
         self.cycle = self.config["general.cycle"]
-        self.cnfile = ConfigPaths.path_from_subpath(f"{self.cycle}/assemble_{kind}.yml")
-        self.nlfile = ConfigPaths.path_from_subpath(f"{self.cycle}/{kind}_namelists.yml")
+        self.cnfile = _resolve_namelist_path(f"{self.cycle}/assemble_{kind}.yml")
+        self.nlfile = _resolve_namelist_path(f"{self.cycle}/{kind}_namelists.yml")
         self.domain_name = self.config["domain.name"]
         self.accept_static_namelist = self.config["general.accept_static_namelists"]
 
@@ -422,18 +452,19 @@ class NamelistGenerator:
             tstep = int(tstep)
         except ValueError:
             tstep = self.platform.evaluate(tstep, SelectTstep)
-        # default value:
-        output_timesteps = [1, -1]
         # decode string into list
         time_intervals = find_value(time_intervals)
 
         dtlist = oi2dt_list(time_intervals, forecast_range)
         logger.debug("steplist: {} // {}", time_intervals, forecast_range)
         logger.debug("dtlist: {}", dtlist)
-        output_timesteps = [
-            int((dt.days * 24 * 3600 + dt.seconds) / tstep) for dt in dtlist
-        ]
-        output_timesteps.insert(0, len(output_timesteps))
+        if dtlist:
+            output_timesteps = [
+                int((dt.days * 24 * 3600 + dt.seconds) / tstep) for dt in dtlist
+            ]
+            output_timesteps.insert(0, len(output_timesteps))
+        else:
+            output_timesteps = [1, -1]
         logger.debug("result: {}", output_timesteps)
         # NOTE: a resolver can not return a list
         # so turn into a string
@@ -446,7 +477,7 @@ class NamelistGenerator:
             result = self.platform.substitute(_result)
             logger.debug("CFG INSERT: {} -> {}", arg, result)
         except KeyError:
-            result = default if default is not None else arg
+            result = default
             logger.debug("CFG UNKNOWN: {} default {}", arg, default)
         # NOTE: all values are returned as STRINGS
         #       which means you must re-interpret with find_val()
@@ -602,7 +633,7 @@ class NamelistGenerator:
             self.update_from_config("all_targets")
 
         try:
-            _update = self.config["namelist_update"][self.kind][target].dict()
+            _update = self.config["namelist_update"][self.kind][target]
             # Make sure everything is in upper case
             update = {}
             for namelist, keyval in _update.items():
@@ -653,7 +684,7 @@ class NamelistIntegrator:
         """Construct the integrator.
 
         Args:
-            config (tactus.ParsedConfig): Configuration
+            config (ParsedConfig): Configuration
 
         Raises:
             SystemExit   # noqa: DAR401
@@ -727,7 +758,7 @@ class NamelistConverter:
     @staticmethod
     def get_known_cycles():
         """Return the cycles handled by the converter."""
-        return ["CY48t2", "CY48t3", "CY49", "CY49t1", "CY49t2", "CY50t1"]
+        return ["CY48t2", "CY48t3", "CY49", "CY49t1", "CY49t2", "CY50t2"]
 
     @staticmethod
     def get_to_next_version_tnt_filenames():
@@ -737,14 +768,14 @@ class NamelistConverter:
             "cy48t2_to_cy49.yaml",  # CY48t3 to CY49
             "cy49_to_cy49t1.yaml",  # CY49   to CY49t1
             None,  # CY49t1 to CY49t2,
-            "cy50_to_cy50t1.yaml",  # CY49t2 to CY5051
+            "cy50_to_cy50t2.yaml",  # CY49t2 to CY50t2
         ]
 
     @staticmethod
     def get_tnt_files_list(from_cycle, to_cycle):
         """Return the list of tnt directive files required for the conversion."""
         # definitions of the conversion to apply between cycles
-        tnt_directives_folder = ConfigPaths.path_from_subpath("tnt_directives")
+        tnt_directives_folder = _resolve_namelist_path("tnt_directives")
 
         if from_cycle and to_cycle:
             known_cycles = NamelistConverter.get_known_cycles()
@@ -987,9 +1018,7 @@ class NamelistConverter:
            SystemExit: when conversion failed
         """
         logger.info(f"Apply {tnt_directive_filename}")
-        tnt_directives_folder = ConfigPaths.path_from_subpath(
-            "tnt_directives",
-        )
+        tnt_directives_folder = _resolve_namelist_path("tnt_directives")
         command = [
             "tnt.py",
             "-d",

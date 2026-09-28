@@ -3,9 +3,15 @@
 from pathlib import Path
 
 from tactus.os_utils import tactusmakedirs
-from tactus.suites.base import EcflowSuiteTask, SuiteDefinition
+from tactus.suites.base import (
+    EcflowSuiteTask,
+    EcflowSuiteTrigger,
+    EcflowSuiteTriggers,
+    SuiteDefinition,
+)
 from tactus.suites.tactus_suite_components import (
     CompilationFamily,
+    MirrorSuite,
     StaticDataFamily,
     TimeDependentFamily,
 )
@@ -22,7 +28,7 @@ class TactusSuiteDefinition(SuiteDefinition):
         """Construct the definition.
 
         Args:
-            config (tactus.ParsedConfig): Configuration file
+            config (ParsedConfig): Configuration file
             dry_run (bool, optional): Dry run not using ecflow. Defaults to False.
 
         Raises:
@@ -56,14 +62,33 @@ class TactusSuiteDefinition(SuiteDefinition):
             create_static_data = False
 
         # Construct the suite from individual ecFlow components
-        final_cleaning_trigger = None
+        final_cleaning_trigger = []
         time_dependent_trigger_node = None
+
+        mirror = None
+        if config["suite_control"].get("mirror_suite", False):
+            _mirror = MirrorSuite(
+                self.suite,
+                config,
+                self.task_settings,
+                input_template,
+                self.ecf_files,
+                ecf_files_remotely=self.ecf_files_remotely,
+            )
+            mirror = EcflowSuiteTriggers([EcflowSuiteTrigger(_mirror)])
+            mirror.trigger_string = (
+                f"( /{self.name}/"
+                f"Mirror_{config['scheduler.mirror_suite.mirror_name']}/"
+                f"{_mirror.mirror_path} == complete )"
+            )
+
         prep_run = EcflowSuiteTask(
             "PrepRun",
             self.suite,
             config,
             self.task_settings,
             self.ecf_files,
+            trigger=mirror,
             input_template=input_template,
             ecf_files_remotely=self.ecf_files_remotely,
         )
@@ -82,7 +107,7 @@ class TactusSuiteDefinition(SuiteDefinition):
 
         # Update triggers for final cleaning and time dependent nodes
         if config["suite_control.do_cleaning"]:
-            final_cleaning_trigger = [prep_run]
+            final_cleaning_trigger.append(prep_run)
             time_dependent_trigger_node = prep_run
 
         if create_static_data:
@@ -125,7 +150,7 @@ class TactusSuiteDefinition(SuiteDefinition):
                 ecf_files_remotely=self.ecf_files_remotely,
             )
             # Update triggers for final cleaning node
-            final_cleaning_trigger = [collect_logs]
+            final_cleaning_trigger.append(collect_logs)
 
         last_time_dependent_part = None
         if config["suite_control.create_time_dependent_suite"]:
@@ -145,31 +170,29 @@ class TactusSuiteDefinition(SuiteDefinition):
 
         if last_time_dependent_part is not None:
             # Update triggers for final cleaning node
-            if final_cleaning_trigger is None:
-                final_cleaning_trigger = [last_time_dependent_part]
-            else:
-                final_cleaning_trigger.append(last_time_dependent_part)
+            final_cleaning_trigger.append(last_time_dependent_part)
 
-            if config["reference_checker.check"] or config["reference_checker.generate"]:
-                EcflowSuiteTask(
-                    "ReferenceCheck",
-                    self.suite,
-                    config,
-                    self.task_settings,
-                    self.ecf_files,
-                    input_template=input_template,
-                    trigger=final_cleaning_trigger,
-                    ecf_files_remotely=self.ecf_files_remotely,
-                )
+        if config["reference_checker.check"] or config["reference_checker.generate"]:
+            EcflowSuiteTask(
+                "ReferenceCheck",
+                self.suite,
+                config,
+                self.task_settings,
+                self.ecf_files,
+                input_template=input_template,
+                trigger=final_cleaning_trigger,
+                ecf_files_remotely=self.ecf_files_remotely,
+            )
 
-            if config["suite_control.do_cleaning"]:
-                EcflowSuiteTask(
-                    "PostMortem",
-                    self.suite,
-                    config,
-                    self.task_settings,
-                    self.ecf_files,
-                    input_template=input_template,
-                    trigger=final_cleaning_trigger,
-                    ecf_files_remotely=self.ecf_files_remotely,
-                )
+        if config["suite_control.do_cleaning"]:
+            EcflowSuiteTask(
+                "PostMortem",
+                self.suite,
+                config,
+                self.task_settings,
+                self.ecf_files,
+                input_template=input_template,
+                trigger=final_cleaning_trigger,
+                variables={"TACTUS_TASK": "Cleaning", "ARGS": "cleaning_type=PostMortem"},
+                ecf_files_remotely=self.ecf_files_remotely,
+            )

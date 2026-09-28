@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Derive runtime variables."""
 
+import os
 import shutil
 from math import atan, floor, sin
 
@@ -15,14 +16,15 @@ def set_times(config):
     """Set basetime/validtime if not present.
 
     Args:
-        config (.config_parser.ParsedConfig): Parsed config file contents.
+        config (ParsedConfig): Parsed config file contents.
 
     Raises:
         ValueError: If start > end
     Returns:
         update (dict): Dict of corrected basetime/validtime
     """
-    times = config["general.times"].dict()
+    times = config.get_as_dict("general.times")
+
     if "start" in times:
         times.update({"start": evaluate_date(times["start"])})
     if "basetime" not in times:
@@ -37,12 +39,13 @@ def set_times(config):
     if "start" not in times:
         times.update({"start": times["basetime"]})
         logger.debug("Set start to {}", times["start"])
+
     if "end" not in times:
         times.update({"end": times["basetime"]})
         logger.debug("Set end to {}", times["end"])
 
     times.update({"start": evaluate_date(times["start"])})
-    times.update({"end": evaluate_date(times["end"])})
+    times.update({"end": evaluate_date(times["end"], reference_date=times["start"])})
 
     if as_datetime(times["start"]) > as_datetime(times["end"]):
         raise ValueError(
@@ -59,7 +62,7 @@ def check_fullpos_namelist(config, nlgen):
     """Find existing fullpos select files or generate them.
 
     Args:
-        config (tactus.ParsedConfig): Configuration
+        config (ParsedConfig): Configuration
         nlgen (dict): master forecast namelist
 
     Returns:
@@ -72,15 +75,16 @@ def check_fullpos_namelist(config, nlgen):
     generate_namelist = True
     if accept_static_namelists:
         namelists = platform.get_system_value("namelists")
-        fullpos_select_files = Search.find_files(
-            namelists, prefix="xxt", recursive=False, fullpath=True
-        )
-        if len(fullpos_select_files) > 0:
-            for filename in fullpos_select_files:
-                shutil.copy(filename, ".")
-                logger.info("Copy fullpos select file {}", filename)
+        if os.path.isdir(namelists):
+            fullpos_select_files = Search.find_files(
+                namelists, prefix="xxt", recursive=False, fullpath=True
+            )
+            if len(fullpos_select_files) > 0:
+                for filename in fullpos_select_files:
+                    shutil.copy(filename, ".")
+                    logger.info("Copy fullpos select file {}", filename)
 
-            generate_namelist = False
+                generate_namelist = False
 
     if generate_namelist:
         _fpdir = config["fullpos.config_path"]
@@ -111,7 +115,7 @@ def derived_variables(config, processor_layout=None):
     """Derive some variables required in the namelists.
 
     Args:
-        config (tactus.ParsedConfig): Configuration
+        config (ParsedConfig): Configuration
         processor_layout (ProcessorLayout, optional): Processor layout object
 
     Returns:
@@ -194,12 +198,8 @@ def derived_variables(config, processor_layout=None):
         )
         raise NotImplementedError(msg)
 
-    xlat0 = config.get("domain.xlat0", "")
-    xlon0 = config.get("domain.xlon0", "")
-    if not xlat0:
-        xlat0 = config.get("domain.xlatcen")
-    if not xlon0:
-        xlon0 = config.get("domain.xloncen")
+    xlat0 = config.get("domain.xlat0", config.get("domain.xlatcen"))
+    xlon0 = config.get("domain.xlon0", config.get("domain.xloncen"))
 
     pi = 4.0 * atan(1.0)
     xrpk = sin(float(xlat0) * pi / 180.0)
@@ -230,10 +230,10 @@ def derived_variables(config, processor_layout=None):
         selection.append("windfarm")
 
     # Turn boolean to strings and macros
-    default_macros = config.get(
+    default_macros = config.get_as_dict(
         "macros.select.default",
         {"gen_macros": [], "group_macros": [], "os_macros": []},
-    ).dict()
+    )
     gen_macros = list(default_macros["gen_macros"])
 
     decades = "one_decade" if config["pgd.one_decade"] else "all_decade"

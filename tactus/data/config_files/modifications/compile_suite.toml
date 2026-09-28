@@ -1,0 +1,6 @@
+[general]
+  case = "IAL_@IAL_GIT_TAG@_compile"
+
+[suite_control]
+  compile = true
+  suite_definition = "CompilationSuiteDefinition"

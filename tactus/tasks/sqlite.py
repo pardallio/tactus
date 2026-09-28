@@ -24,7 +24,7 @@ class ExtractSQLite(Task):
         """Construct ExtractSQLite object.
 
         Args:
-            config (tactus.ParsedConfig): Configuration
+            config (ParsedConfig): Configuration
 
         Raises:
             FileNotFoundError: Required file not fount
@@ -37,7 +37,7 @@ class ExtractSQLite(Task):
         try:
             self.infile_dt = self.config["extractsqlite.selection"]
         except KeyError:
-            self.infile_dt = self.config["general.output_settings.fullpos"]
+            self.infile_dt = self.config.get("general.output_settings.fullpos")
         self.infile_template = self.config["file_templates.fullpos.archive"]
 
         self.sqlite_path = self.platform.substitute(
@@ -120,7 +120,7 @@ class MergeSQLites(Task):
         """Construct ExtractSQLite object.
 
         Args:
-            config (tactus.ParsedConfig): Configuration
+            config (ParsedConfig): Configuration
 
         Raises:
             FileNotFoundError: Required file not found

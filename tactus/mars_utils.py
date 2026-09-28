@@ -11,11 +11,20 @@ from subprocess import run
 from time import sleep
 from typing import Dict, List, Tuple
 
+from eccodes import (
+    codes_get,
+    codes_grib_new_from_file,
+    codes_release,
+    codes_set,
+    codes_write,
+)
+
 from .config_parser import ParsedConfig
 from .datetime_utils import as_datetime
 from .domain_utils import get_domain
 from .geo_utils import Projection, Projstring
 from .logs import logger
+from .os_utils import remove_ifexists
 from .toolbox import Platform
 
 
@@ -24,13 +33,13 @@ def mars_selection(selection: str, config: ParsedConfig) -> dict:
 
     Args:
         selection             (str): The selection to use.
-        config (tactus.ParsedConfig): Configuration object
+        config (ParsedConfig): Configuration object
 
     Returns:
          mars                (dict): mars config section
 
     """
-    mars = config[f"mars.{selection}"].dict()
+    mars = config.get_as_dict(f"mars.{selection}")
     if "expver" not in mars:
         mars["expver"] = selection
 
@@ -139,15 +148,6 @@ def get_mars_keys(source, key_filter="-w shortName:s=z"):
         )
         logger.info("Mars config - {} = {}", prm, result[prm])
     return result
-
-
-def remove_ifexists(file, etime=sys.float_info.max):
-    """Utility function to be used for lockfiles."""
-    if os.path.exists(file):
-        mtime = os.path.getmtime(file)
-        if mtime < etime:
-            logger.info(f"Removing: {file}")
-            os.remove(file)
 
 
 def get_steps_and_members_to_retrieve(
@@ -265,7 +265,17 @@ def get_steps_and_members_to_retrieve(
     if perturbed_members:
         members_dict["perturbed_members"] = perturbed_members
 
-    return steps, waitfor_steps, members_dict, missing_member_steps, waitfor_member_steps
+    # Populate members_dict to make sure we wait for missing files
+    if len(waitfor_steps) > 0 and len(members_dict) == 0:
+        members_dict["no_member_info"] = [None]
+
+    return (
+        steps,
+        waitfor_steps,
+        members_dict,
+        missing_member_steps,
+        waitfor_member_steps,
+    )
 
 
 def check_data_available(basetime, mars):
@@ -296,7 +306,7 @@ def get_domain_data(config):
     """Read and return domain data.
 
     Args:
-        config (tactus.ParsedConfig): Configuration from which we get the domain data
+        config (ParsedConfig): Configuration from which we get the domain data
     Returns:
         String containing the domain info for MARS
     """
@@ -317,15 +327,18 @@ def get_domain_data(config):
     ])
 
 
-def get_value_from_dict(dict_, key_orig):
+def get_value_from_dict(dict_, reference_date, key_orig=None):
     """Check value according to key.
 
     - If a string returns the value itself
-    - If key is a date search for the most suitable match in value
-    - Else return the value matching the key.
+    - If key_orig is given call recursively with dict[key_orig]
+    - If a dict check most suitable reference_date > date.
+      If the reference_date < any date pick the first one
+    - If no date exists return the value matching the key.
 
     Args:
         dict_ (str, BaseConfig object): Values to select
+        reference_date (str): Date to check against
         key_orig (str): key for value checking
 
     Returns:
@@ -337,8 +350,11 @@ def get_value_from_dict(dict_, key_orig):
     if isinstance(dict_, str):
         return dict_
 
+    if key_orig is not None:
+        return get_value_from_dict(dict_[key_orig], reference_date)
+
     try:
-        ref_date = as_datetime(key_orig)
+        ref_date = as_datetime(reference_date)
         for key, val in sorted(dict_.items(), reverse=True):
             if ref_date >= as_datetime(key):
                 return val
@@ -681,7 +697,41 @@ class BaseRequest:
                 self.request.update({
                     "DATABASE": "fdb",
                 })
+            if self.request["PARAM"] == "130":
+                self.request.update({
+                    "EXPVER": "0002",
+                })
 
     def replace(self, **kwargs):
         """Return new instance with updated values."""
         return replace(self, **kwargs)
+
+
+def fix_snow_layer(tag: str, steps: List[int], members_dict: Dict[str, List[int]]):
+    """Fix snow layer for snow albedo."""
+    for step in steps:
+        for members in members_dict.values():
+            for member in members:
+                filename = f"{tag}_{member or 0}+{step}"
+
+                with open(filename, "rb") as fin, open("ICMGGtmp", "wb") as fout:
+                    while True:
+                        gid = codes_grib_new_from_file(fin)
+                        if gid is None:
+                            break
+                        try:
+                            short_name = str(codes_get(gid, "shortName"))
+                            if short_name == "asn":
+                                logger.info(
+                                    "Fixing snow layer for snow albedo in file: {}",
+                                    filename,
+                                )
+                                codes_set(gid, "edition", 2)
+                                codes_set(gid, "typeOfLevel", "snowLayer")
+                                codes_set(gid, "level", 1)
+
+                            codes_write(gid, fout)
+                        finally:
+                            codes_release(gid)
+
+                shutil.move("ICMGGtmp", filename)

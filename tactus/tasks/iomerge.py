@@ -21,7 +21,7 @@ class IOmerge(Task):
         """Construct IOmerge object.
 
         Args:
-            config (tactus.ParsedConfig): Configuration
+            config (ParsedConfig): Configuration
         """
         Task.__init__(self, config, __class__.__name__)
 
@@ -181,7 +181,7 @@ class IOmerge(Task):
             logger.debug("  {}", x)
 
         if filetype in ("history", "surfex"):
-            lfitools = self.get_binary("lfitools")
+            lfitools = self.get_binary("lfitools", "IOmerge")
 
             # NOTE: .sfx also has a part in the working directory,
             #        so you *must* change the name

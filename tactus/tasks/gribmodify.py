@@ -29,7 +29,7 @@ class AddCalculatedFields(Task):
         """Construct create grib object.
 
         Args:
-            config (tactus.ParsedConfig): Configuration
+            config (ParsedConfig): Configuration
         """
         Task.__init__(self, config, __class__.__name__)
 
@@ -598,6 +598,11 @@ class AddCalculatedFields(Task):
                     "Skipping as conversion of {} is not set for CSC {}",
                     filetype,
                     self.csc,
+                )
+                continue
+            if self.output_settings.get(filetype) is None:
+                logger.info(
+                    "Skipping as output_settings for filtype={} is not defined", filetype
                 )
                 continue
             file_handle = FileManager.create_list(

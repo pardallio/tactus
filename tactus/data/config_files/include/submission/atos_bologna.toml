@@ -21,7 +21,7 @@
   ECMWFTOOLBOX = ["load", "ecmwf-toolbox/2026.01.0.0"]
 
 [submission.task_exceptions.ArchiveFDB.ENV]
-  FDB5_HOME = "$ECMWF_TOOLBOX_DIR"
+  FDB5_HOME = "/home/fdbtest/versions/7.30.6.0/"
   FDB_ENABLE_GRIBJUMP = "1"
   FDB_HOME = "@TACTUS_FDB_HOME@"
   GRIBJUMP_CONFIG_FILE = "@TACTUS_FDB_HOME@/etc/gribjump/config_on-demand-extremes-dt.yaml"
@@ -53,14 +53,10 @@
   OMP_STACKSIZE = "4G"
 
 [submission.task_exceptions.CreateGrib]
-  binary = "gl"
-  bindir = "@BINDIR_GL@"
+  binary = "gl_DP"
 
 [submission.task_exceptions.CreateGrib.BATCH]
   WALLTIME = "#SBATCH --time=01:00:00"
-
-[submission.task_exceptions.CreateGribStatic]
-  bindir = "@BINDIR_GL@"
 
 [submission.task_exceptions.E927]
   NPROC = 16
@@ -73,7 +69,6 @@
   ECMWFTOOLBOX = ["load", "ecmwf-toolbox/2026.01.0.0"]
 
 [submission.task_exceptions.Forecast]
-  bindir = "@INSTALL_DIR@/@CYCLE@/@COMPILER@/@PRECISION@/@IAL_VERSION@/bin"
   NPROC = 30
   NPROC_IO = 2
 
@@ -87,15 +82,25 @@
   RTTOV_COEFDIR = "@RTTOV_COEFDIR@"
   UCX_LOG_LEVEL = "error"
 
-[submission.task_exceptions.IALBundleBuild.BATCH]
+[submission.task_exceptions.TactusBundleBuild.BATCH]
   MEM = "#SBATCH --mem=0GB"
+  QOS = "#SBATCH --qos=np"
   NODES = "#SBATCH --nodes=1"
-  NTASKS = "#SBATCH --ntasks=32"
+  NTASKS = "#SBATCH --ntasks=1"
+  CPUSPERTASK = "#SBATCH --cpus-per-task=128"
   WALLTIME = "#SBATCH --time=02:00:00"
 
+[submission.task_exceptions.TactusBundleBuild.ENV]
+  OMP_NUM_THREADS = 128
+
+[submission.task_exceptions.TactusBundleCreate.BATCH]
+  WALLTIME = "#SBATCH --time=00:45:00"
+
+[submission.task_exceptions.GlBd]
+  binary = "gl_DP"
+
 [submission.task_exceptions.InterpolSstSic]
-  binary = "gl"
-  bindir = "@BINDIR_GL@"
+  binary = "gl_DP"
 
 [submission.task_exceptions.IOmerge.BATCH]
   WALLTIME = "#SBATCH --time=01:00:00"
@@ -120,8 +125,7 @@
   WALLTIME = "#SBATCH --time=00:30:00"
 
 [submission.task_exceptions.PgdUpdate]
-  binary = "gl"
-  bindir = "@BINDIR_GL@"
+  binary = "gl_DP"
 
 [submission.task_exceptions.Prep]
   WRAPPER = "srun -n @NPROC@"
@@ -136,6 +140,20 @@
 
 [submission.task_exceptions.Topography.MODULES]
   GDAL = ["load", "gdal/3.6.2"]
+
+[submission.task_exceptions.Addpert]
+  binary = "ADDPERT"
+  WRAPPER = "srun"
+
+[submission.task_exceptions.Addpert.BATCH]
+  CPUS = "#SBATCH --cpus-per-task=1"
+  MEM = "#SBATCH --mem=32GB"
+  NODES = "#SBATCH --nodes=1"
+  NTASKS = "#SBATCH --ntasks=1"
+  WALLTIME = "#SBATCH --time=00:30:00"
+
+[submission.task_exceptions.Addpert.ENV]
+  DR_HOOK_ASSERT_MPI_INITIALIZED = 0
 
 [submission.types.background_hpc]
   SCHOST = "localhost"

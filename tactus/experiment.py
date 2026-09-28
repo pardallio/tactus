@@ -20,7 +20,7 @@ from tactus.config_parser import (
 from tactus.datetime_utils import evaluate_date
 from tactus.derived_variables import set_times
 from tactus.eps.eps_setup import EPSConfig, generate_member_settings
-from tactus.general_utils import modify_mappings, recursive_dict_deviation
+from tactus.general_utils import merge_dicts, recursive_dict_deviation
 from tactus.host_actions import set_tactus_home
 from tactus.logs import logger
 from tactus.os_utils import resolve_path_relative_to_package
@@ -38,7 +38,7 @@ class Exp:
         """Instanciate an object of the main experiment class.
 
         Args:
-            config (.config_parser.ParsedConfig): Parsed config file contents.
+            config (ParsedConfig): Parsed config file contents.
             merged_config (dict): Experiment configuration
 
         """
@@ -57,7 +57,12 @@ class Exp:
             config = config.copy(
                 update={
                     "general": {
-                        "times": {"end": evaluate_date(config["general.times.end"])}
+                        "times": {
+                            "end": evaluate_date(
+                                config["general.times.end"],
+                                reference_date=config["general.times.start"],
+                            )
+                        }
                     }
                 }
             )
@@ -79,7 +84,7 @@ class ExpFromFiles(Exp):
         """Construct an Exp object from files.
 
         Args:
-            config (.config_parser.ParsedConfig): Parsed config file contents.
+            config (ParsedConfig): Parsed config file contents.
             exp_dependencies (dict): Exp dependencies
             mod_files (List[Path]): Case modifications
             host (TactusHost, optional): tactus host. Defaults to None.
@@ -215,7 +220,7 @@ class EPSExp(Exp):
         """Setup EPS experiment.
 
         Args:
-            config (.config_parser.ParsedConfig): Parsed config file contents.
+            config (ParsedConfig): Parsed config file contents.
         """
         super().__init__(config=config, merged_config=None)
 
@@ -227,7 +232,7 @@ class EPSExp(Exp):
         """
         # First convert self.config["eps"] to a plain dict. This is needed before
         # we turn config objects into pydantic dataclasses.
-        eps_plain_dict = modify_mappings(self.config["eps"], operator=dict)
+        eps_plain_dict = self.config.get_as_dict("eps")
         # Then convert the general EPS settings to a dataclass
         epsconfig = EPSConfig(**eps_plain_dict)
 
@@ -281,9 +286,11 @@ class EPSExp(Exp):
 
                         # Merge modifications with remainder member settings.
                         # Modifications take precendence over any existing settings.
-                        member_settings_deviation = modify_mappings(
+
+                        member_settings_deviation = merge_dicts(
                             member_settings_deviation, lmod
                         )
+
                     else:
                         logger.warning("Skip missing modification file {}", mod)
 
@@ -318,7 +325,7 @@ def case_setup(
     """Do experiment setup.
 
     Args:
-        config (.config_parser.ParsedConfig): Parsed config file contents.
+        config (ParsedConfig): Parsed config file contents.
         output_file (str): Output config file.
         mod_files (list): Modifications. Defaults to None.
         case (str, optional): Case identifier. Defaults to None.
