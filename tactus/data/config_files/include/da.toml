@@ -1,5 +1,4 @@
 [da]
-  #scratch = "@CASEDIR@/da/@YYYY@/@MM@/@DD@/@HH@/@MEMBER_STR@"
   obs_provider = "LACE"
 
 [da.surface]
