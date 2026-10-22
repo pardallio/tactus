@@ -5,9 +5,10 @@
   albvis_veg_dir = "@CLIMDATA@/ECOCLIMAP-SG/ALB_SAT"
   archive_root = "@SCRATCH@/@SYS_NAME@/@CASE@/archive"
   archive_types = ["compress", "copy", "ecfs", "fdb"]
+  bator_dir = "@STATIC_DATA@/BATOR"
   bufr_tables = "/usr/local/apps/bufrdc/tables/000424/"
   climdata = "@STATIC_DATA@/climate"
-  da_const_dir = "@STATIC_DATA@/BATOR"
+  da_const_dir = "/perm/sis/da/const"
   e923_data = "@STATIC_DATA@/climate/E923_DATA"
   ecoclim_data_path = "@CLIMDATA@/ecoclimap"
   ecoclimap_bin_dir = "@ecoclim_data_path@"
@@ -37,4 +38,5 @@
   tree_height_dir = "@CLIMDATA@/ECOCLIMAP-SG/HT"
   unix_group = "accord"
   uv_cache_dir = "/perm/@USER@/.cache/uv"
+  varbc_init_dir = "/perm/sis/da/varbc_init"
   windfarm_path = "@STATIC_DATA@/WFP_input_files/"
