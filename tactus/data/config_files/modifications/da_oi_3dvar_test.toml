@@ -10,9 +10,6 @@
 [da.upper_air]
   active = true
 
-[platform]
-  obs_dir = "/scratch/sis/da/obs/@YYYY@/@MM@/@DD@"
-
 [submission]
   bindir = "/ec/res4/scratch/sis/install/pr/intel/bin/"
   precision = "R64"
