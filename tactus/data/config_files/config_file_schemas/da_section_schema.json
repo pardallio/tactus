@@ -16,11 +16,6 @@
         "UWC"
       ]
     },
-    "scratch": {
-      "description": "Data assimilation specific scratch area.",
-      "type": "string",
-      "default": "@CASEDIR@/da/@YYYY@/@MM@/@DD@/@HH@/@MEMBER_STR@"
-    },
     "bgcycle": {
       "description": "Cold-start cycle (YYYYMMDDHH). The Assimilation family is skipped for it and OopsVar may run without VarBC.",
       "type": "string"
