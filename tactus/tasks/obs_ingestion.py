@@ -37,7 +37,7 @@ class OdbIngestionTask(Task):
         """
         Task.__init__(self, config, self.__class__.__name__)
         self.basetime = as_datetime(config["general.times.basetime"])
-        self.da_scratch = config["da.scratch"]
+        self.da_dir = self.platform.get_system_value("dadir")
         self.da_const_dir = self.platform.get_platform_value("da_const_dir")
         self.domain = config["domain.name"]
         self.obstype = config.get("task.args.obstype", "")
@@ -52,7 +52,7 @@ class OdbIngestionTask(Task):
     def execute(self):
         """Run the configured obs-ingestion binary for *self.obstype*."""
         obsprep_dir = os.path.join(
-            self.platform.substitute(self.da_scratch), f"{self.obs.family}/obsprep"
+            self.platform.substitute(self.da_dir), f"{self.obs.family}/obsprep"
         )
 
         bin_path = self.get_binary(self._BINARY_NAME)
@@ -181,7 +181,7 @@ class OdbIngestionTask(Task):
         # Use stream-specific subdirectory so surface (16-pool) and upper-air (128-pool)
         # archives don't overwrite each other when both streams process the same obstype.
         out_dir = os.path.join(
-            self.platform.substitute(self.da_scratch),
+            self.platform.substitute(self.da_dir),
             self.obs.family,
             "odb",
             self.obstype,
