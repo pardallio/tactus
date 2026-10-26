@@ -72,10 +72,15 @@ class OdbMerge(Task):
         )
         # --- locate binaries ---
         self.shuffle_bin = self.get_binary("shuffle.x")
-        self.fmanager.input(binpath,"shuffle", tool,provider_id="symlink",)
+        self.fmanager.input(
+            binpath,
+            "shuffle",
+            tool,
+            provider_id="symlink",
+        )
         for binary in ["merge_ioassign", "create_ioassign", "ioassign"]:
             binpath = self.get_binary(tool)
-            self.fmanager.input(binpath, tool,provider_id="symlink")
+            self.fmanager.input(binpath, tool, provider_id="symlink")
 
         # --- collect available BATOR subbases for this stream ---
         bases_to_merge = []

@@ -11,7 +11,6 @@ from ..submission import TaskSettings
 from .base import EcflowSuiteFamily, EcflowSuiteTask
 from .suite_utils import combine_triggers
 
-
 # ---------------------------------------------------------------------------
 # OdbFamily — parallel BATOR tasks + OdbMerge
 # ---------------------------------------------------------------------------
@@ -66,7 +65,7 @@ class OdbFamily(EcflowSuiteFamily):
 
         odb_fams = []
         for obstype in obs_types:
-            odb_family= EcflowSuiteFamily(
+            odb_family = EcflowSuiteFamily(
                 obstype,
                 self,
                 ecf_files,

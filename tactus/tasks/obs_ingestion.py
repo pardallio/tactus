@@ -18,6 +18,7 @@ from ..os_utils import tactusmakedirs
 from .base import Task
 from .batch import BatchJob
 
+
 class OdbIngestionTask(Task):
     """Abstract base for tasks that run an ODB observation-ingestion binary.
 
@@ -51,10 +52,12 @@ class OdbIngestionTask(Task):
         self.nlgen = NamelistGenerator(config, self.obsconverter.lower())
         self.paramcfg_name = f"param_{self.nlgen_key}.cfg"
         self.binary_name = f"{self.obsconverter.lower()}.x"
-        self.binary = self.get_binary(self.binary_name,self.obsconverter)
+        self.binary = self.get_binary(self.binary_name, self.obsconverter)
         self.bindir = Path(self.binary).parent.absolute()
 
-        logger.debug("Constructed {} task for obstype={}", self.obsconverter, self.obstype)
+        logger.debug(
+            "Constructed {} task for obstype={}", self.obsconverter, self.obstype
+        )
 
     def execute(self):
         """Run the configured obs-ingestion binary for *self.obstype*."""
@@ -62,14 +65,14 @@ class OdbIngestionTask(Task):
             self.platform.substitute(self.da_dir), f"{self.obs.family}/obsprep"
         )
 
-        #bindir = os.path.dirname(bin_path)
-        #ioassign = self.get_binary("ioassign")
-        #create_ioassign = self.get_binary("create_ioassign")
+        # bindir = os.path.dirname(bin_path)
+        # ioassign = self.get_binary("ioassign")
+        # create_ioassign = self.get_binary("create_ioassign")
         for tool in ["create_ioassign", "ioassign"]:
             binpath = self.get_binary(tool)
-            #src = os.path.join(bindir, tool)
-            self.fmanager.input(binpath, tool,provider_id="symlink")
-            #os.symlink(binpath, tool)
+            # src = os.path.join(bindir, tool)
+            self.fmanager.input(binpath, tool, provider_id="symlink")
+            # os.symlink(binpath, tool)
 
         # --- namelists and constants ---
         self.nlgen.generate_namelist(self.nlgen_key, "NAMELIST")
@@ -260,7 +263,9 @@ class OdbIngestionTask(Task):
             fout.write(cohhect_header)
             for line in fin:
                 fout.write(line)
-        logger.debug("{}: copied {} with fixed OBSOUL header", self.obsconverter, local_name)
+        logger.debug(
+            "{}: copied {} with fixed OBSOUL header", self.obsconverter, local_name
+        )
 
     def _write_refdata_and_batormap(self, yyyy, mm, dd, hh, local_name):
         """Write refdata and batormap files.

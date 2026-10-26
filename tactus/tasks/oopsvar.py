@@ -68,7 +68,7 @@ class OopsVar(Task):
         self.oovar = self.get_binary("ifs4dvar.DP")
         for tool in ["create_ioassign", "ioassign"]:
             binpath = self.get_binary(tool)
-            self.fmanager.input(binpath, tool,provider_id="symlink")
+            self.fmanager.input(binpath, tool, provider_id="symlink")
 
         # --- static input data ---
         input_definition = ConfigPaths.path_from_subpath(
