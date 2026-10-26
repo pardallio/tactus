@@ -65,11 +65,10 @@ class OopsVar(Task):
         out_dir = os.path.join(da_dir, self.obs.family, "oopsvar")
         nproc = int(os.environ.get("NPROC", self.obs.nbpool))
 
-        oovar = self.get_binary("ifs4dvar.DP")
-        bindir = os.path.dirname(oovar)
-        self.fmanager.input(oovar, "ifs4dvar.DP")
+        self.oovar = self.get_binary("ifs4dvar.DP")
         for tool in ["create_ioassign", "ioassign"]:
-            self.fmanager.input(os.path.join(bindir, tool), tool)
+            binpath = self.get_binary(tool)
+            self.fmanager.input(binpath, tool,provider_id="symlink")
 
         # --- static input data ---
         input_definition = ConfigPaths.path_from_subpath(
@@ -176,7 +175,7 @@ class OopsVar(Task):
         # --- run OOVAR ---
         with open("oops.log", "a") as oops_log:
             BatchJob(rte, wrapper=self.platform.substitute(self.wrapper)).run(
-                "./ifs4dvar.DP oops.json", logfile=oops_log
+                f"{self.oovar} oops.json", logfile=oops_log
             )
 
         analysis = "ICMSHOOPS+0000"
