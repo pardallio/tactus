@@ -73,12 +73,11 @@ class OdbMerge(Task):
         # --- locate binaries ---
         self.shuffle_bin = self.get_binary("shuffle.x")
         self.fmanager.input(
-            binpath,
+            self.shuffle_bin,
             "shuffle",
-            tool,
             provider_id="symlink",
         )
-        for binary in ["merge_ioassign", "create_ioassign", "ioassign"]:
+        for tool in ["merge_ioassign", "create_ioassign", "ioassign"]:
             binpath = self.get_binary(tool)
             self.fmanager.input(binpath, tool, provider_id="symlink")
 
@@ -142,7 +141,7 @@ class OdbMerge(Task):
             "ODB_ANALYSIS_TIME": f"{hh}0000",
             "TIME_INIT_YYYYMMDD": f"{yyyy}{mm}{dd}",
             "TIME_INIT_HHMMSS": f"{hh}0000",
-            "ODB_FEBINPATH": bin_dir,
+            "ODB_FEBINPATH": os.path.dirname(self.shuffle_bin),
             "ODB_CMA": "ECMA",
             "BATOR_NBSLOT": "1",
             # merge_ioassign writes the merged IOASSIGN into wdir/ECMA/,

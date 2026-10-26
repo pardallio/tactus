@@ -46,8 +46,6 @@ class BlendSur(Task):
         da_dir = self.platform.substitute(self.da_dir)
         canari_dir = os.path.join(da_dir, self.obs.family, "canari")
 
-        # self.fmanager.input(self.get_binary("BLENDSUR"), "BLENDSUR")
-
         # BLENDSUR writes into its output file, which must already exist
         lbc = self.platform.substitute(
             f"{self.intp_bddir}/{self.lbc_template}",

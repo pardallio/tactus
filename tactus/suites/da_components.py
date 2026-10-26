@@ -71,7 +71,7 @@ class OdbFamily(EcflowSuiteFamily):
                 ecf_files,
                 ecf_files_remotely=ecf_files_remotely,
             )
-            task = EcflowSuiteTask(
+            EcflowSuiteTask(
                 f"{task_class}",
                 odb_family,
                 config,

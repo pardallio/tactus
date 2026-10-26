@@ -65,14 +65,9 @@ class OdbIngestionTask(Task):
             self.platform.substitute(self.da_dir), f"{self.obs.family}/obsprep"
         )
 
-        # bindir = os.path.dirname(bin_path)
-        # ioassign = self.get_binary("ioassign")
-        # create_ioassign = self.get_binary("create_ioassign")
         for tool in ["create_ioassign", "ioassign"]:
             binpath = self.get_binary(tool)
-            # src = os.path.join(bindir, tool)
             self.fmanager.input(binpath, tool, provider_id="symlink")
-            # os.symlink(binpath, tool)
 
         # --- namelists and constants ---
         self.nlgen.generate_namelist(self.nlgen_key, "NAMELIST")
