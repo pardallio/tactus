@@ -46,14 +46,14 @@ class OdbIngestionTask(Task):
                 f"{self.obsconverter}: task.args.obstype variable is not set. "
             )
         self.obs = Observations(config)
-        
+
         self.nlgen_key = self.obsconverter.lower()
         self.nlgen = NamelistGenerator(config, self.obsconverter.lower())
         self.paramcfg_name = f"param_{self.nlgen_key}.cfg"
         self.binary_name = f"{self.obsconverter.lower()}.x"
         self.binary = self.get_binary(self.binary_name,self.obsconverter)
         self.bindir = Path(self.binary).parent.absolute()
-        
+
         logger.debug("Constructed {} task for obstype={}", self.obsconverter, self.obstype)
 
     def execute(self):
