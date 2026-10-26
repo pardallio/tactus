@@ -18,6 +18,7 @@ from ..os_utils import tactusmakedirs
 from .base import Task
 from .batch import BatchJob
 
+
 class OdbIngestionTask(Task):
     """Abstract base for tasks that run an ODB observation-ingestion binary.
 
@@ -46,15 +47,17 @@ class OdbIngestionTask(Task):
                 f"{self.obsconverter}: task.args.obstype variable is not set. "
             )
         self.obs = Observations(config)
-        
+
         self.nlgen_key = self.obsconverter.lower()
         self.nlgen = NamelistGenerator(config, self.obsconverter.lower())
         self.paramcfg_name = f"param_{self.nlgen_key}.cfg"
         self.binary_name = f"{self.obsconverter.lower()}.x"
-        self.binary = self.get_binary(self.binary_name,self.obsconverter)
+        self.binary = self.get_binary(self.binary_name, self.obsconverter)
         self.bindir = Path(self.binary).parent.absolute()
-        
-        logger.debug("Constructed {} task for obstype={}", self.obsconverter, self.obstype)
+
+        logger.debug(
+            "Constructed {} task for obstype={}", self.obsconverter, self.obstype
+        )
 
     def execute(self):
         """Run the configured obs-ingestion binary for *self.obstype*."""
@@ -62,14 +65,9 @@ class OdbIngestionTask(Task):
             self.platform.substitute(self.da_dir), f"{self.obs.family}/obsprep"
         )
 
-        #bindir = os.path.dirname(bin_path)
-        #ioassign = self.get_binary("ioassign")
-        #create_ioassign = self.get_binary("create_ioassign")
         for tool in ["create_ioassign", "ioassign"]:
             binpath = self.get_binary(tool)
-            #src = os.path.join(bindir, tool)
-            self.fmanager.input(binpath, tool,provider_id="symlink")
-            #os.symlink(binpath, tool)
+            self.fmanager.input(binpath, tool, provider_id="symlink")
 
         # --- namelists and constants ---
         self.nlgen.generate_namelist(self.nlgen_key, "NAMELIST")
@@ -260,7 +258,9 @@ class OdbIngestionTask(Task):
             fout.write(cohhect_header)
             for line in fin:
                 fout.write(line)
-        logger.debug("{}: copied {} with fixed OBSOUL header", self.obsconverter, local_name)
+        logger.debug(
+            "{}: copied {} with fixed OBSOUL header", self.obsconverter, local_name
+        )
 
     def _write_refdata_and_batormap(self, yyyy, mm, dd, hh, local_name):
         """Write refdata and batormap files.
@@ -305,15 +305,8 @@ class OdbIngestionTask(Task):
         xdx = float(self.config["domain.xdx"])
         xdy = float(self.config["domain.xdy"])
 
-        # NB: test for "unset", not truthiness. xlon0 = 0.0 (Greenwich) is a
-        # valid reference longitude but is falsy in Python, so `if lon0_raw else
-        # lonc` silently substituted the domain centre: NAM_lamflag then carried
-        # EFLON0=9.9 while the model's geometry used ELON0=0.0, and the two
-        # disagreed about where an observation sits on the grid.
-        lat0_raw = self.config.get("domain.xlat0", "")
-        lon0_raw = self.config.get("domain.xlon0", "")
-        lat0 = float(lat0_raw) if lat0_raw and lat0_raw is not None else latc
-        lon0 = float(lon0_raw) if lon0_raw and lon0_raw is not None else lonc
+        lat0 = float(self.config.get("domain.xlat0", latc))
+        lon0 = float(self.config.get("domain.xlon0", lonc))
 
         redzone = float(self.config.get("da.bator_redzone", 50.0))
         canzone = float(self.config.get("da.bator_canzone", 1500.0))
