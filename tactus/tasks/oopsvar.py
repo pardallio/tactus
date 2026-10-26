@@ -50,8 +50,8 @@ class OopsVar(Task):
         Task.__init__(self, config, __class__.__name__)
         self.basetime = as_datetime(config["general.times.basetime"])
         self.da_dir = self.platform.get_system_value("dadir")
-        self.varbc_init_dir = config.get("da.varbc_init_dir", "")
-        self.rttov_coef_dir = config["da.rttov_coef_dir"]
+        self.varbc_init_dir = config.get("platform.varbc_init_dir", "")
+        self.rttov_coef_dir = config["platform.rttov_coefdir"]
         self.bgcycle = config.get("da.bgcycle", "")
         self.obs = Observations(config, da_stream="upper_air")
         self.nlgen = NamelistGenerator(config, "oovar")

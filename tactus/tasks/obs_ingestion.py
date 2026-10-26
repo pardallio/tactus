@@ -305,15 +305,9 @@ class OdbIngestionTask(Task):
         xdx = float(self.config["domain.xdx"])
         xdy = float(self.config["domain.xdy"])
 
-        # NB: test for "unset", not truthiness. xlon0 = 0.0 (Greenwich) is a
-        # valid reference longitude but is falsy in Python, so `if lon0_raw else
-        # lonc` silently substituted the domain centre: NAM_lamflag then carried
-        # EFLON0=9.9 while the model's geometry used ELON0=0.0, and the two
-        # disagreed about where an observation sits on the grid.
-        lat0_raw = self.config.get("domain.xlat0", "")
-        lon0_raw = self.config.get("domain.xlon0", "")
-        lat0 = float(lat0_raw) if lat0_raw and lat0_raw is not None else latc
-        lon0 = float(lon0_raw) if lon0_raw and lon0_raw is not None else lonc
+        
+        lat0 = float(self.config.get("domain.xlat0", latc)) #if lat0_raw and lat0_raw is not None else latc
+        lon0 = float(self.config.get("domain.xlon0", lonc)) #if lon0_raw and lon0_raw is not None else lonc
 
         redzone = float(self.config.get("da.bator_redzone", 50.0))
         canzone = float(self.config.get("da.bator_canzone", 1500.0))
