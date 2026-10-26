@@ -11,25 +11,6 @@ from ..submission import TaskSettings
 from .base import EcflowSuiteFamily, EcflowSuiteTask
 from .suite_utils import combine_triggers
 
-# ---------------------------------------------------------------------------
-# Default obs-type lists
-# ---------------------------------------------------------------------------
-
-_DEFAULT_OBS_SURFACE: List[str] = ["synop"]
-
-_DEFAULT_OBS_3DVAR: List[str] = [
-    "synop",
-    "gpssol",
-    "amdar",
-    "geowind",
-    "temp",
-    "seviri",
-    "amsua",
-    "amsub",
-    "iasi",
-    "ascat",
-    "radar",
-]
 
 # ---------------------------------------------------------------------------
 # OdbFamily — parallel BATOR tasks + OdbMerge
@@ -83,22 +64,28 @@ class OdbFamily(EcflowSuiteFamily):
             ecf_files_remotely=ecf_files_remotely,
         )
 
-        bator_tasks = []
+        odb_fams = []
         for obstype in obs_types:
-            task = EcflowSuiteTask(
-                f"{task_class}_{obstype}",
+            odb_family= EcflowSuiteFamily(
+                obstype,
                 self,
+                ecf_files,
+                ecf_files_remotely=ecf_files_remotely,
+            )
+            task = EcflowSuiteTask(
+                f"{task_class}",
+                odb_family,
                 config,
                 task_settings,
                 ecf_files,
                 input_template=input_template,
                 variables={
-                    "TACTUS_TASK": task_class,
+                    "TACTUS_TASK": "OdbIngestion",
                     "ARGS": f"obstype={obstype};da_stream={da_stream}",
                 },
                 ecf_files_remotely=ecf_files_remotely,
             )
-            bator_tasks.append(task)
+            odb_fams.append(odb_family)
 
         EcflowSuiteTask(
             "OdbMerge",
@@ -107,7 +94,7 @@ class OdbFamily(EcflowSuiteFamily):
             task_settings,
             ecf_files,
             input_template=input_template,
-            trigger=bator_tasks,
+            trigger=odb_fams,
             variables={"ARGS": f"da_stream={da_stream}"},
             ecf_files_remotely=ecf_files_remotely,
         )
