@@ -305,9 +305,8 @@ class OdbIngestionTask(Task):
         xdx = float(self.config["domain.xdx"])
         xdy = float(self.config["domain.xdy"])
 
-        
-        lat0 = float(self.config.get("domain.xlat0", latc)) #if lat0_raw and lat0_raw is not None else latc
-        lon0 = float(self.config.get("domain.xlon0", lonc)) #if lon0_raw and lon0_raw is not None else lonc
+        lat0 = float(self.config.get("domain.xlat0", latc))
+        lon0 = float(self.config.get("domain.xlon0", lonc))
 
         redzone = float(self.config.get("da.bator_redzone", 50.0))
         canzone = float(self.config.get("da.bator_canzone", 1500.0))
