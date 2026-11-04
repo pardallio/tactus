@@ -55,24 +55,6 @@ class ObsPrep(Task):
     - ``upper_air``   stages all configured obs types for upper_air
     """
 
-    DEFAULT_OBS_SURFACE = ["synop"]
-
-    DEFAULT_OBS_3DVAR = [
-        "synop",
-        "gpssol",
-        "amdar",
-        "geowind",
-        "hrwind",
-        "temp",
-        "wp",
-        "seviri",
-        "amsua",
-        "amsub",
-        "iasi",
-        "ascat",
-        "radar",
-    ]
-
     def __init__(self, config):
         """Construct ObsPrep task.
 
