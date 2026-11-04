@@ -82,6 +82,7 @@ class Canari(Task):
         self.basetime = as_datetime(config["general.times.basetime"])
         self.da_dir = self.platform.get_system_value("dadir")
         self.obs = Observations(config)
+        self.masterodb = self.get_binary("MASTERODB")
         logger.debug("Constructed Canari task")
 
     def execute(self):
@@ -89,9 +90,6 @@ class Canari(Task):
         (yyyy, mm, dd, hh) = split_date(self.basetime)
         da_dir = self.platform.substitute(self.da_dir)
         odb_dir = os.path.join(da_dir, self.obs.family, "odbmerge")
-
-        masterodb = self.get_binary("MASTERODB")
-        self.fmanager.input(masterodb, "MASTERODB")
 
         # --- namelists ---
         canari_namelists(self.config)
@@ -156,7 +154,7 @@ class Canari(Task):
             "ODB_ANALYSIS_TIME": f"{hh}0000",
             "TIME_INIT_YYYYMMDD": f"{yyyy}{mm}{dd}",
             "TIME_INIT_HHMMSS": f"{hh}0000",
-            "ODB_FEBINPATH": os.path.dirname(masterodb),
+            "ODB_FEBINPATH": os.path.dirname(self.masterodb),
             "ODB_CMA": "ECMA",
             "ODB_SRCPATH_ECMA": os.path.join(self.wdir, "ECMA"),
             "ODB_DATAPATH_ECMA": os.path.join(self.wdir, "ECMA"),
@@ -172,7 +170,7 @@ class Canari(Task):
         }
 
         # --- run MASTERODB ---
-        BatchJob(rte, wrapper=self.platform.substitute(self.wrapper)).run("./MASTERODB")
+        BatchJob(rte, wrapper=self.platform.substitute(self.wrapper)).run(self.masterodb)
 
         output_file = "ICMSHANAL+0000"
         if not os.path.isfile(output_file) or os.path.getsize(output_file) == 0:
