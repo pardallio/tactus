@@ -71,16 +71,15 @@ class OdbMerge(Task):
             os.path.join(self.da_dir, self.obs.family, "odb")
         )
         # --- locate binaries ---
-        shuffle_bin = self.get_binary("shuffle")
-        if not os.access(shuffle_bin, os.X_OK):
-            shuffle_bin = self.get_binary("shuffle.x")
-        bin_dir = os.path.dirname(shuffle_bin)
-        for binary in ["shuffle", "ioassign", "merge_ioassign", "create_ioassign"]:
-            src = os.path.join(bin_dir, binary)
-            if not os.access(src, os.X_OK):
-                src = os.path.join(bin_dir, binary + ".x")
-            if os.access(src, os.X_OK) and not os.path.lexists(binary):
-                os.symlink(src, binary)
+        self.shuffle_bin = self.get_binary("shuffle.x")
+        self.fmanager.input(
+            self.shuffle_bin,
+            "shuffle",
+            provider_id="symlink",
+        )
+        for tool in ["merge_ioassign", "create_ioassign", "ioassign"]:
+            binpath = self.get_binary(tool)
+            self.fmanager.input(binpath, tool, provider_id="symlink")
 
         # --- collect available BATOR subbases for this stream ---
         bases_to_merge = []
@@ -142,7 +141,7 @@ class OdbMerge(Task):
             "ODB_ANALYSIS_TIME": f"{hh}0000",
             "TIME_INIT_YYYYMMDD": f"{yyyy}{mm}{dd}",
             "TIME_INIT_HHMMSS": f"{hh}0000",
-            "ODB_FEBINPATH": bin_dir,
+            "ODB_FEBINPATH": os.path.dirname(self.shuffle_bin),
             "ODB_CMA": "ECMA",
             "BATOR_NBSLOT": "1",
             # merge_ioassign writes the merged IOASSIGN into wdir/ECMA/,

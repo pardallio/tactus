@@ -50,8 +50,8 @@ class OopsVar(Task):
         Task.__init__(self, config, __class__.__name__)
         self.basetime = as_datetime(config["general.times.basetime"])
         self.da_dir = self.platform.get_system_value("dadir")
-        self.varbc_init_dir = config.get("da.varbc_init_dir", "")
-        self.rttov_coef_dir = config["da.rttov_coef_dir"]
+        self.varbc_init_dir = config.get("platform.varbc_init_dir", "")
+        self.rttov_coef_dir = config["platform.rttov_coefdir"]
         self.bgcycle = config.get("da.bgcycle", "")
         self.obs = Observations(config, da_stream="upper_air")
         self.nlgen = NamelistGenerator(config, "oovar")
@@ -65,11 +65,10 @@ class OopsVar(Task):
         out_dir = os.path.join(da_dir, self.obs.family, "oopsvar")
         nproc = int(os.environ.get("NPROC", self.obs.nbpool))
 
-        oovar = self.get_binary("ifs4dvar.DP")
-        bindir = os.path.dirname(oovar)
-        self.fmanager.input(oovar, "ifs4dvar.DP")
+        self.oovar = self.get_binary("ifs4dvar.DP")
         for tool in ["create_ioassign", "ioassign"]:
-            self.fmanager.input(os.path.join(bindir, tool), tool)
+            binpath = self.get_binary(tool)
+            self.fmanager.input(binpath, tool, provider_id="symlink")
 
         # --- static input data ---
         input_definition = ConfigPaths.path_from_subpath(
@@ -176,7 +175,7 @@ class OopsVar(Task):
         # --- run OOVAR ---
         with open("oops.log", "a") as oops_log:
             BatchJob(rte, wrapper=self.platform.substitute(self.wrapper)).run(
-                "./ifs4dvar.DP oops.json", logfile=oops_log
+                f"{self.oovar} oops.json", logfile=oops_log
             )
 
         analysis = "ICMSHOOPS+0000"

@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 from collections.abc import Mapping
+from pathlib import Path
 
 import pyproj
 
@@ -26,8 +27,6 @@ class OdbIngestionTask(Task):
 
     _BINARY_NAME: str = ""
     _PARAM_CFG_NAME: str = ""
-    _LOG_TAG: str = ""
-    _NLGEN_KEY: str = ""
 
     def __init__(self, config):
         """Construct forecast object.
@@ -35,19 +34,30 @@ class OdbIngestionTask(Task):
         Args:
             config (ParsedConfig): Configuration
         """
-        Task.__init__(self, config, self.__class__.__name__)
+        Task.__init__(self, config, __class__.__name__)
         self.basetime = as_datetime(config["general.times.basetime"])
         self.da_dir = self.platform.get_system_value("dadir")
-        self.da_const_dir = self.platform.get_platform_value("da_const_dir")
+        self.bator_dir = self.platform.get_platform_value("bator_dir")
         self.domain = config["domain.name"]
+        self.stream = config.get("task.args.da_stream", "")
+        self.obsconverter = config.get(f"da.{self.stream}.odbconverter", "Obsconvert")
         self.obstype = config.get("task.args.obstype", "")
         if not self.obstype:
             raise RuntimeError(
-                f"{self._LOG_TAG}: task.args.obstype variable is not set. "
+                f"{self.obsconverter}: task.args.obstype variable is not set. "
             )
         self.obs = Observations(config)
-        self.nlgen = NamelistGenerator(config, self._NLGEN_KEY)
-        logger.debug("Constructed {} task for obstype={}", self._LOG_TAG, self.obstype)
+
+        self.nlgen_key = self.obsconverter.lower()
+        self.nlgen = NamelistGenerator(config, self.obsconverter.lower())
+        self.paramcfg_name = f"param_{self.nlgen_key}.cfg"
+        self.binary_name = f"{self.obsconverter.lower()}.x"
+        self.binary = self.get_binary(self.binary_name, self.obsconverter)
+        self.bindir = Path(self.binary).parent.absolute()
+
+        logger.debug(
+            "Constructed {} task for obstype={}", self.obsconverter, self.obstype
+        )
 
     def execute(self):
         """Run the configured obs-ingestion binary for *self.obstype*."""
@@ -55,22 +65,19 @@ class OdbIngestionTask(Task):
             self.platform.substitute(self.da_dir), f"{self.obs.family}/obsprep"
         )
 
-        bin_path = self.get_binary(self._BINARY_NAME)
-        self.fmanager.input(bin_path, self._BINARY_NAME)
-        bindir = os.path.dirname(bin_path)
         for tool in ["create_ioassign", "ioassign"]:
-            src = os.path.join(bindir, tool)
-            os.symlink(src, tool)
+            binpath = self.get_binary(tool)
+            self.fmanager.input(binpath, tool, provider_id="symlink")
 
         # --- namelists and constants ---
-        self.nlgen.generate_namelist(self._NLGEN_KEY, "NAMELIST")
+        self.nlgen.generate_namelist(self.nlgen_key, "NAMELIST")
 
         # Fetch static input data
         input_definition = ConfigPaths.path_from_subpath(
             self.platform.substitute("@CYCLE@/obs_process.json")
         )
         logger.info("Read data spec from: {}", input_definition)
-        self.platform.add_macro({"ODBCONVERTER": self._NLGEN_KEY})
+        self.platform.add_macro({"ODBCONVERTER": self.nlgen_key})
         with open(input_definition, "r", encoding="utf-8") as f:
             input_data = json.load(f)
         self.fmanager.input_data_iterator(input_data)
@@ -96,7 +103,7 @@ class OdbIngestionTask(Task):
             "ODB_ANALYSIS_TIME": f"{hh}0000",
             "TIME_INIT_YYYYMMDD": f"{yyyy}{mm}{dd}",
             "TIME_INIT_HHMMSS": f"{hh}0000",
-            "ODB_FEBINPATH": bindir,
+            "ODB_FEBINPATH": self.bindir,
             "ODB_CMA": "ECMA",
             "NBPOOL": str(self.obs.nbpool),
             "BATOR_NBPOOL": str(self.obs.nbpool),
@@ -105,7 +112,7 @@ class OdbIngestionTask(Task):
             "BATOR_SLOT_LEN": td2min(self.obs.bator_slot_len),
             "BATOR_CENTER_LEN": td2min(self.obs.bator_center_len),
             "BATOR_NBSLOT": str(self.obs.bator_nbslot),
-            "BATOR_BASE": bindir,
+            "BATOR_BASE": self.bindir,
             "BATOR_LAMFLAG": bator_lamflag,
             "IOASSIGN": os.path.join(self.wdir, "IOASSIGN"),
             "SWAPP_ODB_IOASSIGN": os.path.join(self.wdir, "IOASSIGN"),
@@ -128,7 +135,7 @@ class OdbIngestionTask(Task):
         if not local_name:
             logger.info(
                 "{}: no obs file for obstype '{}' — skipping run.",
-                self._LOG_TAG,
+                self.obsconverter,
                 self.obstype,
             )
             return
@@ -161,19 +168,19 @@ class OdbIngestionTask(Task):
                     f"IOASSIGN file not found at {ioassign_file}"
                 )
             )
-        logger.info("{}: IOASSIGN created at {}", self._LOG_TAG, ioassign_file)
+        logger.info("{}: IOASSIGN created at {}", self.obsconverter, ioassign_file)
 
         # --- run obs-ingestion binary ---
         # The platform wrapper (srun) acts as the MPI launcher on SLURM systems;
         # adding a separate mpirun prefix causes double-MPI-init and DR_HOOK abort.
-        BatchJob(rte, wrapper=self.wrapper).run(f"./{self._BINARY_NAME}")
+        BatchJob(rte, wrapper=self.wrapper).run(self.binary)
 
         # --- verify output ---
         ecma_out = f"ECMA.{self.obstype}"
         if not os.path.isdir(ecma_out):
             logger.warning(
                 "{} did not produce {} — marking as complete with warning.",
-                self._LOG_TAG,
+                self.obsconverter,
                 ecma_out,
             )
 
@@ -193,7 +200,7 @@ class OdbIngestionTask(Task):
             if os.path.exists(dst):
                 shutil.rmtree(dst)
             shutil.copytree(ecma_out, dst, symlinks=True, dirs_exist_ok=True)
-            logger.info("{}: archived {} to {}", self._LOG_TAG, ecma_out, out_dir)
+            logger.info("{}: archived {} to {}", self.obsconverter, ecma_out, out_dir)
 
     # ------------------------------------------------------------------
     # Private helpers (shared by all subclasses)
@@ -210,7 +217,7 @@ class OdbIngestionTask(Task):
         if not isinstance(spec, Mapping):
             logger.info(
                 "{}: no provider entry for obstype '{}' — skipping.",
-                self._LOG_TAG,
+                self.obsconverter,
                 self.obstype,
             )
             return None
@@ -223,7 +230,7 @@ class OdbIngestionTask(Task):
         if not os.path.isfile(src):
             logger.info(
                 "{}: no obs file '{}' in obsprep dir for obstype '{}' — skipping.",
-                self._LOG_TAG,
+                self.obsconverter,
                 local_name,
                 self.obstype,
             )
@@ -234,7 +241,7 @@ class OdbIngestionTask(Task):
                 self._copy_obsoul_fixed_header(src, local_name)
             else:
                 os.symlink(src, local_name)
-        logger.debug("{}: staged {} -> {}", self._LOG_TAG, src, local_name)
+        logger.debug("{}: staged {} -> {}", self.obsconverter, src, local_name)
         return local_name
 
     def _copy_obsoul_fixed_header(self, src, local_name):
@@ -251,7 +258,9 @@ class OdbIngestionTask(Task):
             fout.write(cohhect_header)
             for line in fin:
                 fout.write(line)
-        logger.debug("{}: copied {} with fixed OBSOUL header", self._LOG_TAG, local_name)
+        logger.debug(
+            "{}: copied {} with fixed OBSOUL header", self.obsconverter, local_name
+        )
 
     def _write_refdata_and_batormap(self, yyyy, mm, dd, hh, local_name):
         """Write refdata and batormap files.
@@ -265,7 +274,7 @@ class OdbIngestionTask(Task):
                     "{}: cannot derive format from local_name '{}'",
                     " — skipping refdata/batormap",
                 ),
-                self._LOG_TAG,
+                self.obsconverter,
                 local_name,
             )
             return
@@ -296,15 +305,8 @@ class OdbIngestionTask(Task):
         xdx = float(self.config["domain.xdx"])
         xdy = float(self.config["domain.xdy"])
 
-        # NB: test for "unset", not truthiness. xlon0 = 0.0 (Greenwich) is a
-        # valid reference longitude but is falsy in Python, so `if lon0_raw else
-        # lonc` silently substituted the domain centre: NAM_lamflag then carried
-        # EFLON0=9.9 while the model's geometry used ELON0=0.0, and the two
-        # disagreed about where an observation sits on the grid.
-        lat0_raw = self.config.get("domain.xlat0", "")
-        lon0_raw = self.config.get("domain.xlon0", "")
-        lat0 = float(lat0_raw) if lat0_raw and lat0_raw is not None else latc
-        lon0 = float(lon0_raw) if lon0_raw and lon0_raw is not None else lonc
+        lat0 = float(self.config.get("domain.xlat0", latc))
+        lon0 = float(self.config.get("domain.xlon0", lonc))
 
         redzone = float(self.config.get("da.bator_redzone", 50.0))
         canzone = float(self.config.get("da.bator_canzone", 1500.0))
@@ -384,7 +386,7 @@ class OdbIngestionTask(Task):
             fh.write("/\n")
         logger.debug(
             "{}: wrote NAM_lamflag for domain {} ({}x{} @ {}m, SW={:.4f},{:.4f})",
-            self._LOG_TAG,
+            self.obsconverter,
             self.domain,
             nlon,
             nlat,
